@@ -62,3 +62,16 @@ Every image was re-extracted with [second-hand recovery](../data/landmark-extrac
 The cross-source gain (+6 points) decided it: **the app's static classifier is the recovery model** (`checkpoints/dh_gat_v2_main_r.pt`) and the static tracker runs with recovery on (`HandTracker(recover=True)`). Checkpoint names ending in `_r` select this automatically. The continuous model keeps the plain tracker, because its features were computed without recovery.
 
 One side effect is worth knowing: recovery sometimes adds a *spurious* second hand to one-handed letters (about 18 % for O). The classifier tolerates it, and the hold detector ignores the brief prediction flicker it can cause (see [Hold detection](hold-detection)).
+
+## Tried and rejected: stronger augmentation
+
+The cross-source gap looked like a camera-viewpoint and depth problem (MediaPipe's depth estimate differs from camera to camera), so `train_v2.py --strong-aug` widened the 3D rotations (±35°), added random per-hand depth scaling (0.5 – 1.6×), larger per-hand rotation (±20°) and more hand dropout (8 %). Trained without ISL_DATA and tested on it, it did **worse**:
+
+| | current recipe | strong augmentation |
+|---|---:|---:|
+| cross-source accuracy (ISL_DATA unseen) | **70.0 %** | 65.5 % |
+| real news-video test | **95.5 %** | 95.3 % |
+| original in-domain test | 97.8 % | 97.8 % |
+
+So distorting the geometry harder does not close the gap; it removes information the classifier relies on. The recipe was not adopted (the flag is kept so the experiment can be reproduced). What *did* help was fixing the input (second-hand recovery, +6 points). What is still likely to help most is data from the target camera: record your own signs with `src/static/collect_webcam_data.py` and fine-tune.
+
