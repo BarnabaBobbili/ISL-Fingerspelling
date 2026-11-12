@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ISL Fingerspelling Studio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%235eead4%27/%3E%3Cpath d=%27M10 22V12m4 10V9m4 13V11m4 11v-6%27 stroke=%27%230b1020%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/css/style.css">
+<script type="importmap">{"imports": {"three": "/static/vendor/three.module.min.js"}}</script>
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs><rect x="1" y="1" width="30" height="30" rx="9" fill="url(#g)"/><path d="M10 22V12m4 10V9m4 13V11m4 11v-6" stroke="#0b1020" stroke-width="2.6" stroke-linecap="round"/></svg>
+    <div><b>ISL Fingerspelling Studio</b><span>Indian Sign Language &middot; recognition &amp; synthesis</span></div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-tab="live" role="tab">Live webcam</button>
+    <button class="tab" data-tab="upload" role="tab">Upload video</button>
+    <button class="tab" data-tab="sign" role="tab">Text &rarr; Sign</button>
+    <button class="tab" data-tab="alpha" role="tab">Alphabet</button>
+  </nav>
+  <div class="status" id="status"><i class="dot"></i><span>connecting&hellip;</span></div>
+</header>
+
+<main>
+<!-- ───────────── LIVE ───────────── -->
+<section id="tab-live" class="panel active">
+  <div class="grid">
+    <div class="stagewrap">
+      <canvas id="live-stage" width="960" height="540"></canvas>
+      <div class="overlay-msg" id="live-msg">Press <b>Start camera</b> to begin</div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h3>Controls</h3>
+        <div class="row">
+          <button class="btn primary" id="live-start">Start camera</button>
+          <button class="btn" id="live-stop" disabled>Stop</button>
+        </div>
+        <label class="field">Recognition mode
+          <select id="live-mode">
+            <option value="static">Static letters (hold each sign)</option>
+            <option value="continuous">Continuous fingerspelling</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="live-mirror" checked> Mirror preview</label>
+        <label class="check"><input type="checkbox" id="live-skel" checked> Show hand skeleton</label>
+        <p class="hint" id="live-hint">Hold a letter still for about a third of a second to type it. Remove your hands for a moment to start a new word.</p>
+      </div>
+      <div class="card">
+        <h3>Recognised text</h3>
+        <div class="textout" id="live-text">&nbsp;</div>
+        <div class="row wrap">
+          <button class="btn" id="live-speak">&#128266; Speak</button>
+          <button class="btn" id="live-copy">Copy</button>
+          <button class="btn" id="live-space">Space</button>
+          <button class="btn" id="live-back">&#9003;</button>
+          <button class="btn danger" id="live-clear">Clear</button>
+        </div>
+        <div class="metrics"><span>FPS <b id="m-fps">–</b></span><span>latency <b id="m-ms">–</b> ms</span><span>hands <b id="m-hands">0</b></span></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ───────────── UPLOAD ───────────── -->
+<section id="tab-upload" class="panel">
+  <div class="grid">
+    <div>
+      <div class="drop" id="drop">
+        <svg viewBox="0 0 24 24" width="38" height="38"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <p><b>Drop a video here</b> or click to choose<br><small>mp4, mov, avi, mkv, webm &middot; up to 300 MB</small></p>
+        <input type="file" id="file" accept="video/*" hidden>
+      </div>
+      <div class="stagewrap hidden" id="up-stagewrap">
+        <video id="up-video" playsinline controls muted></video>
+        <canvas id="up-canvas"></canvas>
+      </div>
+      <div class="card hidden" id="up-keyframes-card">
+        <h3>Extracted key frames <small>(one per recognised letter &mdash; click to jump)</small></h3>
+        <div class="strip" id="up-strip"></div>
+      </div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h3>Analysis</h3>
+        <label class="field">Recognition mode
+          <select id="up-mode">
+            <option value="static">Static letters (held signs)</option>
+            <option value="continuous">Continuous fingerspelling</option>
+          </select>
+        </label>
+        <div class="progress hidden" id="up-progress"><i id="up-bar"></i><span id="up-ptext">queued</span></div>
+        <p class="hint" id="up-hint">Static mode finds moments where a sign is held still. Continuous mode reads flowing fingerspelling (names, words) with a CTC sequence model.</p>
+      </div>
+      <div class="card">
+        <h3>Result</h3>
+        <div class="textout" id="up-text">&nbsp;</div>
+        <div class="row wrap">
+          <button class="btn" id="up-speak">&#128266; Speak</button>
+          <button class="btn" id="up-copy">Copy</button>
+          <a class="btn hidden" id="up-dl" download>Annotated video</a>
+          <a class="btn hidden" id="up-json" download="result.json">JSON</a>
+        </div>
+        <div class="metrics" id="up-meta"></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ───────────── TEXT → SIGN ───────────── -->
+<section id="tab-sign" class="panel">
+  <div class="grid">
+    <div class="stagewrap avatarwrap">
+      <canvas id="av-canvas"></canvas>
+      <div class="av-hud">
+        <div class="av-letter" id="av-letter">&nbsp;</div>
+        <div class="av-word" id="av-word"></div>
+      </div>
+      <div class="av-tags"><span id="av-hands"></span><span id="av-contact"></span></div>
+    </div>
+    <aside class="side">
+      <div class="card">
+        <h3>Text to sign</h3>
+        <textarea id="sg-text" rows="3" placeholder="Type a word or sentence (A–Z)…">HELLO INDIA</textarea>
+        <div class="row wrap">
+          <button class="btn primary" id="sg-play">&#9654; Sign it</button>
+          <button class="btn" id="sg-stop">&#9632; Stop</button>
+          <button class="btn" id="sg-mic" title="Dictate with your microphone">&#127908; Dictate</button>
+        </div>
+        <div class="chips" id="sg-chips"></div>
+        <label class="field">Speed <input type="range" id="sg-speed" min="0.5" max="2" step="0.1" value="1"></label>
+        <label class="check"><input type="checkbox" id="sg-speak" checked> Speak while signing</label>
+      </div>
+      <div class="card">
+        <h3>Geometry</h3>
+        <label class="check"><input type="checkbox" id="sg-touch" checked> Contact alignment (touching joints)</label>
+        <label class="check"><input type="checkbox" id="sg-markers" checked> Show contact markers</label>
+        <label class="check"><input type="checkbox" id="sg-skel"> Show skeleton</label>
+        <label class="field">Skin tone
+          <select id="sg-skin"><option value="medium">Medium</option><option value="light">Light</option><option value="deep">Deep</option></select>
+        </label>
+        <p class="hint">Drag to orbit, scroll to zoom. With <b>contact alignment</b> on, the joints that touch in a letter (e.g. fingertip on palm) are brought together with a rigid alignment plus finger inverse kinematics.</p>
+        <div class="row"><button class="btn" id="sg-rec">&#9210; Record clip</button></div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ───────────── ALPHABET ───────────── -->
+<section id="tab-alpha" class="panel">
+  <div class="card wide">
+    <h3>All 26 letters <small>&mdash; click a card to watch it on the avatar</small></h3>
+    <div class="alpha" id="alpha"></div>
+  </div>
+</section>
+</main>
+
+<footer>Static model: DH-GAT v2 &nbsp;|&nbsp; <span id="foot-cont">continuous model: …</span> &nbsp;|&nbsp; runs fully on your computer, nothing is uploaded to the internet.</footer>
+
+<script type="module" src="/static/js/app.js"></script>
+</body>
+</html>

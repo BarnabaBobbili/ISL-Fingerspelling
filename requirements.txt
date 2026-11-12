@@ -1,0 +1,25 @@
+# Core
+torch>=2.2
+numpy
+pandas
+scipy
+scikit-learn
+tqdm
+
+# Hand tracking + video
+mediapipe>=0.10
+opencv-python
+
+# Web app (Starlette is the framework FastAPI is built on; no FastAPI needed)
+starlette>=0.40
+uvicorn>=0.30
+python-multipart
+websockets
+
+# Evaluation / plots / sequence metrics (v1 scripts)
+matplotlib
+seaborn
+jiwer
+
+# Optional: offline text-to-speech used by the v1 desktop demos
+# pyttsx3

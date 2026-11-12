@@ -1,0 +1,72 @@
+---
+sidebar_position: 1
+title: System overview
+---
+
+# System overview
+
+The system has two halves that share the same hand-landmark representation: a **recognition** half (sign → text) and a **synthesis** half (text → sign).
+
+```mermaid
+flowchart LR
+    subgraph IN[Input]
+      CAM[Webcam frame]
+      VID[Uploaded video]
+    end
+    CAM --> TRK
+    VID --> TRK
+    TRK["MediaPipe hand tracker<br/>2 hands, 21 joints each<br/>+ second-hand recovery"] --> MODE{Mode}
+    MODE -->|static| CLS["DH-GAT v2<br/>letter + calibrated confidence"]
+    CLS --> HOLD["Hold detector<br/>still hand + stable prediction"]
+    HOLD --> TXT
+    MODE -->|continuous| FEAT["Frame features<br/>trunk embedding · posteriors<br/>raw geometry · motion"]
+    FEAT --> SEQ["Conformer-CTC / BiLSTM-CTC"]
+    SEQ --> DEC["CTC decoding<br/>+ one key frame per letter"]
+    DEC --> TXT["Text"]
+    TXT --> HUD["HUD on top of the video<br/>letter · confidence · text"]
+    TXT --> SPK[Speech]
+
+    T2S[Typed / dictated text] --> POSES["Pose library<br/>26 letters, contact points"]
+    POSES --> GEO["Geometric transformations<br/>Kabsch alignment + FABRIK IK"]
+    GEO --> AV["3D avatar<br/>solid hands, animated"]
+```
+
+## Design principles
+
+1. **Landmarks, not pixels.** Everything downstream of MediaPipe works on 21 joints per hand. This makes the models tiny (0.5 – 2.6 M parameters), CPU-friendly and independent of background, clothing and lighting.
+2. **Both hands in one frame.** Most ISL letters are *defined by contact* between the hands. Earlier work normalised each hand separately and lost that information; v2 keeps a shared frame and explicit inter-hand features.
+3. **Honest evaluation.** Three tests — in-domain, cross-source and real news-video — are always reported together (see [Benchmark](../evaluation/benchmark)).
+4. **One code path.** Training, offline video analysis and the live webcam all use the same feature code (`src/pipeline/features.py`), so a number measured offline is the number users get live.
+5. **Everything local.** No cloud calls; the browser talks only to the local Python server.
+
+## Runtime components
+
+| Component | File | Role |
+|---|---|---|
+| Hand tracker | `src/pipeline/hands.py` | MediaPipe wrapper, hands ordered by wrist-x |
+| Static classifier | `src/pipeline/classifier.py` | DH-GAT v2 + temperature calibration |
+| Hold detector | `src/pipeline/hold.py` | motion + stability → typed letters |
+| Continuous recogniser | `src/pipeline/continuous.py` | CTC model, sliding window, key frames |
+| Video analysis | `src/pipeline/video.py` | upload jobs, annotated video |
+| HUD | `src/pipeline/overlay.py`, `app/static/js/hud.js` | the same HUD in OpenCV and in the browser |
+| Pose library | `src/avatar/build_poses.py` | builds `poses.json` from data |
+| Contact geometry | `src/avatar/touch.py` | alignment + IK |
+| Renderer | `app/static/js/avatar.js` | Three.js solid hands |
+| Web server | `app/server.py` | Starlette: pages, WebSocket, upload API |
+
+## Data flow in the live tab
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant S as Server
+    B->>B: getUserMedia() → video element
+    loop pull-based, one frame in flight
+        B->>S: JPEG frame (WebSocket, binary)
+        S->>S: MediaPipe → classifier → hold detector
+        S-->>B: JSON {hands, letter, confidence, top3, status, text}
+        B->>B: draw video + skeleton + HUD on a canvas
+    end
+```
+
+The browser sends the next frame only after receiving the previous answer, so latency never accumulates; typical round-trip is 30 – 60 ms on a laptop CPU.

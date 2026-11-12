@@ -1,0 +1,52 @@
+# ---- Datasets, caches, generated outputs (top-level only) ----
+/data/
+/cache/
+/MUDRA NITC DATASET/
+/IIITA __ROBITA Indian Sign Language Gesture Database*/
+/logs/
+/results/
+/stage1_report.txt
+/*.png
+
+# ---- Model weights: only the small, deployed ones are tracked ----
+/checkpoints/*
+# dh_gat_v2_main.pt = trunk of the continuous model; dh_gat_v2_main_r.pt = static classifier
+!/checkpoints/dh_gat_v2_main.pt
+!/checkpoints/dh_gat_v2_main_r.pt
+!/checkpoints/cont_best.pt
+# v1 BiLSTM (used by align_real_frames.py) and v1 DH-GAT (benchmark baseline)
+!/checkpoints/bilstm_best.pt
+!/checkpoints/dh_gat_static_best.pt
+
+# ---- Notes / reports not needed in the repo ----
+/CONTINUOUS_REPORT.md
+/DESIGN_DECISIONS.md
+/isl_ppt_content.md
+/src/static/STATIC_REPORT.md
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.npy
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# ---- Documentation site ----
+docs-site/node_modules/
+docs-site/build/
+docs-site/.docusaurus/
+docs-site/.cache/
+
+# ---- Tooling / OS ----
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# ---- Private files that live in the project folder ----
+resume.tex
+M.Tech Sem3 Thesis*/
+*.aux
+*.log
