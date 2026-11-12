@@ -50,10 +50,11 @@ def make_video(word: str, path: Path, gaps: bool, hold: int = 24, gap_frames: in
     wr.release()
 
 
-def run(word: str, gaps: bool, tracker, clf) -> str:
+def run(word: str, gaps: bool, tracker, clf, fps: int = 30) -> str:
+    """same 0.8 s holds / 0.27 s gaps at any frame rate (the hold detector is time-based)."""
     with tempfile.TemporaryDirectory() as d:
         vid = Path(d) / "t.mp4"
-        make_video(word, vid, gaps)
+        make_video(word, vid, gaps, hold=round(0.8 * fps), gap_frames=round(0.27 * fps), fps=fps)
         res = analyze_static(vid, tracker, clf, Path(d) / "out", write_video=False)
     return res["text"].replace(" ", "")
 
@@ -63,13 +64,13 @@ if __name__ == "__main__":
     clf = StaticClassifier()
     tracker = HandTracker(recover=clf.recover)
     ok = True
-    for w in words:
-        for gaps in (True, False):
-            got = run(w, gaps, tracker, clf)
+    for w, gaps, fps in [(w, g, 30) for w in words for g in (True, False)] + [(words[0], True, 15), (words[-1], False, 15)]:
+        if True:
+            got = run(w, gaps, tracker, clf, fps)
             # Known limitation: with NO pause at all, a repeated letter (LL) is indistinguishable
             # from one long hold unless the hold exceeds HoldConfig.repeat_hold_s (1.6 s).
             expected = w if gaps else re.sub(r"(.)\1+", r"\1", w)
             flag = "OK " if got == expected else "DIFF"
             ok &= got == expected
-            print(f"{flag} word={w:<8} gaps={str(gaps):<5} -> {got}   (expected {expected})")
+            print(f"{flag} word={w:<8} gaps={str(gaps):<5} fps={fps} -> {got}   (expected {expected})")
     print("ALL PASSED" if ok else "SOME DIFFERENCES (see above)")

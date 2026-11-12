@@ -96,3 +96,23 @@ def greedy_with_pos(log_probs: np.ndarray):
             k = int(seg.argmax())
             out.append((LETTERS[c], s + k, float(np.exp(seg[k]))))
     return out
+
+
+def greedy_runs(log_probs: np.ndarray):
+    """
+    Greedy CTC decoding with full run information.
+    returns [(char, start, end_inclusive, peak_frame, peak_prob)] for every non-blank run.
+    Used by the streaming recogniser to decide which letters are old enough to commit.
+    """
+    ids = log_probs.argmax(-1)
+    out, t, T = [], 0, len(ids)
+    while t < T:
+        c = int(ids[t])
+        s = t
+        while t < T and int(ids[t]) == c:
+            t += 1
+        if c != BLANK:
+            seg = log_probs[s:t, c]
+            k = int(seg.argmax())
+            out.append((LETTERS[c], s, t - 1, s + k, float(np.exp(seg[k]))))
+    return out

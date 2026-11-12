@@ -55,14 +55,61 @@ def load_data(cols):
     return sets
 
 
-def augment(x: torch.Tensor, trunk_cols: torch.Tensor):
-    """x (T,F) standardised features of one sequence."""
-    T = x.shape[0]
-    if np.random.rand() < 0.7:                                          # time stretch
-        r = np.random.uniform(0.8, 1.25)
-        T2 = max(8, int(T * r))
+def compute_spans(feats: dict, items: list) -> dict:
+    """
+    Letter spans (start, end frame) of every training sequence, from CTC FORCED ALIGNMENT with
+    the current best model (checkpoints/cont_best.pt). Needed for sub-word crops. Cached.
+    """
+    cache = ROOT / "cache" / "cont_spans.pt"
+    if cache.exists():
+        return torch.load(cache)
+    ck = torch.load(ROOT / "checkpoints" / "cont_best.pt", map_location="cpu", weights_only=False)
+    m = SeqCTC(**ck["cfg"])
+    m.load_state_dict(ck["state"])
+    m.eval()
+    spans = {}
+    with torch.no_grad():
+        for uid, _, t in items:
+            x = (feats[uid][:, ck["cols"]].float() - ck["mean"]) / ck["std"]
+            lp, _ = m(x[None], torch.tensor([len(x)]))
+            sp = ctc.forced_align(lp[:, 0].numpy(), [ctc.LETTERS.index(c) for c in t])
+            if sp is not None:
+                spans[uid] = sp
+    torch.save(spans, cache)
+    print(f"forced-alignment spans for {len(spans)}/{len(items)} training sequences")
+    return spans
+
+
+def crop_subword(x: torch.Tensor, t: str, sp: list):
+    """cut a random run of consecutive letters out of a sequence (boundaries halfway between letters)."""
+    L = len(t)
+    n = np.random.randint(min(2, L), L + 1)
+    i = np.random.randint(0, L - n + 1)
+    j = i + n - 1
+    a = 0 if i == 0 else (sp[i - 1][1] + sp[i][0] + 1) // 2
+    b = len(x) if j == L - 1 else (sp[j][1] + sp[j + 1][0]) // 2 + 1
+    return x[a:b], t[i:j + 1]
+
+
+def augment_raw(x: torch.Tensor, t: str, sp, vel_idx, stream: bool):
+    """augmentations on UN-standardised features; returns (x, label)."""
+    if stream and sp is not None and len(t) > 1 and np.random.rand() < 0.5:
+        x, t = crop_subword(x, t, sp)
+    lo, hi, p = (0.55, 1.3, 0.8) if stream else (0.8, 1.25, 0.7)
+    if np.random.rand() < p:                                            # speed change
+        r = np.random.uniform(lo, hi)                                   # duration factor (<1 = faster)
+        T2 = max(8, int(len(x) * r), int(2.5 * len(t)) + 2)
+        r = T2 / len(x)
         x = F.interpolate(x.T[None], size=T2, mode="linear", align_corners=False)[0].T
-        T = T2
+        if stream and vel_idx is not None:
+            x = x.clone()
+            x[:, vel_idx] = x[:, vel_idx] / r                           # faster signing = larger per-frame velocity
+    return x, t
+
+
+def augment(x: torch.Tensor, trunk_cols: torch.Tensor):
+    """x (T,F) standardised features of one sequence (time-stretch now lives in augment_raw)."""
+    T = x.shape[0]
     for _ in range(np.random.randint(0, 3)):                            # time masks
         w = np.random.randint(2, 9)
         if T > w + 2:
@@ -74,9 +121,18 @@ def augment(x: torch.Tensor, trunk_cols: torch.Tensor):
     return x + 0.08 * torch.randn_like(x)
 
 
+AUG = {"stream": False, "spans": {}, "vel_idx": None, "pool": None}
+
+
 def batchify(items, mean, std, train, trunk_cols):
     xs, ys = [], []
-    for _, x, t in items:
+    for uid, x, t in items:
+        if train:
+            x, t = augment_raw(x, t, AUG["spans"].get(uid), AUG["vel_idx"], AUG["stream"])
+            if AUG["stream"] and AUG["pool"] is not None and np.random.rand() < 0.15:   # join two words
+                u2, x2, t2 = AUG["pool"][np.random.randint(len(AUG["pool"]))]
+                x2, t2 = augment_raw(x2, t2, AUG["spans"].get(u2), AUG["vel_idx"], True)
+                x, t = torch.cat([x, x2]), t + t2
         x = (x - mean) / std
         if train:
             x = augment(x.clone(), trunk_cols)
@@ -114,6 +170,8 @@ def main():
     ap.add_argument("--patience", type=int, default=15)
     ap.add_argument("--kernel", type=int, default=15)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--stream-aug", action="store_true",
+                    help="streaming-oriented augmentation: sub-word crops, speed 0.55-1.3x, word joins")
     a = ap.parse_args()
     tag = a.tag or f"{a.kind}_{a.parts}"
     torch.manual_seed(a.seed); np.random.seed(a.seed)
@@ -125,6 +183,11 @@ def main():
     cat = torch.cat([x for _, x, _ in sets["train"]])
     mean, std = cat.mean(0), cat.std(0).clamp(min=1e-3)
     trunk_cols = torch.tensor([i for i, c in enumerate(cols) if c < SLICES["probs"].stop]) if a.parts == "all" else None
+    if a.stream_aug:
+        m0 = SLICES["motion"].start
+        AUG.update(stream=True, pool=sets["train"],
+                   vel_idx=torch.tensor([i for i, c in enumerate(cols) if m0 <= c < m0 + 5]),
+                   spans=compute_spans(torch.load(ROOT / "cache" / "cont_feat.pt"), sets["train"]))
 
     model = SeqCTC(a.kind, in_dim=len(cols), kernel=a.kernel)
     print(tag, "params", sum(p.numel() for p in model.parameters()))

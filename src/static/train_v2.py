@@ -81,7 +81,7 @@ def _rot(ax, ay, az):
     return Rz @ Ry @ Rx
 
 
-def augment(lm: torch.Tensor, present: torch.Tensor, p_mirror=0.3, p_drop=0.04):
+def augment(lm: torch.Tensor, present: torch.Tensor, p_mirror=0.3, p_drop=0.04, strong=False):
     B = lm.shape[0]
     lm, present = lm.clone(), present.clone()
     d2r = np.pi / 180
@@ -92,18 +92,23 @@ def augment(lm: torch.Tensor, present: torch.Tensor, p_mirror=0.3, p_drop=0.04):
     hsize = (hs * pw).sum(1) / n                                          # (B,)
     center = (wrist * pw[..., None]).sum(1) / n[:, None]                  # (B,3)
 
+    if strong:
+        # depth (z) is only an ESTIMATE and differs between cameras: rescale it per hand around the wrist
+        zs = torch.empty(B, 2, 1).uniform_(0.5, 1.6)
+        lm[..., 2] = wrist[:, :, None, 2] + (lm[..., 2] - wrist[:, :, None, 2]) * zs
     # per-hand independent: scale, small z-rotation about own wrist, translation
     s = 1 + (torch.rand(B, 2, 1, 1) - 0.5) * 0.2
     lm = wrist[:, :, None] + (lm - wrist[:, :, None]) * s
-    rz = (torch.rand(B, 2) - 0.5) * 2 * 10 * d2r
+    rz = (torch.rand(B, 2) - 0.5) * 2 * (20 if strong else 10) * d2r
     R = _rot(torch.zeros(B * 2), torch.zeros(B * 2), rz.reshape(-1)).view(B, 2, 3, 3)
     lm = wrist[:, :, None] + torch.einsum("bhij,bhnj->bhni", R, lm - wrist[:, :, None])
     lm = lm + (torch.randn(B, 2, 1, 3) * 0.12 * hsize[:, None, None, None])
 
     # global 3D rotation of the whole scene about its centre
-    ax = (torch.rand(B) - 0.5) * 2 * 20 * d2r
-    ay = (torch.rand(B) - 0.5) * 2 * 20 * d2r
-    az = (torch.rand(B) - 0.5) * 2 * 30 * d2r
+    ra = 35 if strong else 20
+    ax = (torch.rand(B) - 0.5) * 2 * ra * d2r
+    ay = (torch.rand(B) - 0.5) * 2 * ra * d2r
+    az = (torch.rand(B) - 0.5) * 2 * (35 if strong else 30) * d2r
     Rg = _rot(ax, ay, az)
     lm = center[:, None, None] + torch.einsum("bij,bhnj->bhni", Rg, lm - center[:, None, None])
 
@@ -196,6 +201,7 @@ def main():
     ap.add_argument("--real-weight", type=float, default=4.0)
     ap.add_argument("--patience", type=int, default=8)
     ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--strong-aug", action="store_true", help="wider 3D rotation, random depth scaling, more hand dropout")
     a = ap.parse_args()
     torch.manual_seed(a.seed)
     np.random.seed(a.seed)
@@ -237,7 +243,7 @@ def main():
         tot = 0.0
         for _ in range(steps_per_epoch):
             idx = torch.multinomial(w, a.bs, replacement=True)
-            lm, pr = augment(lm_tr[idx], pr_tr[idx])
+            lm, pr = augment(lm_tr[idx], pr_tr[idx], p_drop=0.08 if a.strong_aug else 0.04, strong=a.strong_aug)
             loss = F.cross_entropy(model.forward_raw(lm, pr), y_tr[idx], label_smoothing=0.05)
             opt.zero_grad()
             loss.backward()

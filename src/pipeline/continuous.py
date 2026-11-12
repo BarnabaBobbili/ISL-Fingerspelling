@@ -5,7 +5,7 @@ Continuous (CTC) fingerspelling recognition for uploaded videos and the live web
 
   ContinuousModel     frozen DH-GAT trunk + trained sequence model (Conformer/BiLSTM-CTC)
   analyze_continuous  offline: decode a whole video, one key frame per letter, annotated video
-  ContinuousSession   online: sliding-window re-decoding of the last seconds of webcam frames
+  ContinuousSession   online: streaming.StreamingSession (30 Hz resampling, stable-prefix commit)
 
 The vocabulary has no space symbol (the dataset transcripts were stripped of spaces), so
 words are separated by a PAUSE: hands leaving the picture for ~1.2 s commits the word.
@@ -126,65 +126,5 @@ def analyze_continuous(path, tracker, out_dir, model: ContinuousModel = None, pr
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-class ContinuousSession:
-    """Streaming recogniser: re-decodes a sliding window of the most recent frames."""
-
-    def __init__(self, model: ContinuousModel, gap_s: float = 1.2, max_frames: int = 360, every: int = 3):
-        self.m, self.gap_s, self.max_frames, self.every = model, gap_s, max_frames, every
-        self.reset()
-
-    def reset(self):
-        self.committed = ""
-        self._clear_window()
-
-    def _clear_window(self):
-        self.buf, self.hyp, self.found = [], "", []
-        self.prev_px, self.prev_present = None, None
-        self.last_hand_t = None
-        self.lp = None
-
-    @property
-    def text(self):
-        return self.committed + self.hyp.upper()
-
-    @text.setter
-    def text(self, v):                       # used by the web app's space / backspace buttons
-        self.committed = v
-        self._clear_window()
-
-    def _commit(self):
-        if self.hyp:
-            self.committed += self.hyp.upper() + " "
-        self._clear_window()
-
-    def step(self, rec: dict, t: float, n: int) -> dict:
-        present = bool(rec["present"].any())
-        out = {"letter": None, "conf": 0.0, "top3": [], "status": "no_hand", "event": None, "motion": 0.0}
-        if present:
-            px = F.to_px(rec["lm"], rec["wh"])[None]
-            pr = rec["present"][None]
-            feat = np.concatenate([F.static_part(self.m.trunk, self.m.temp, px, pr),
-                                   F.motion_part(px, pr, self.prev_px, self.prev_present)], axis=1)[0]
-            self.prev_px, self.prev_present = px[0], rec["present"].copy()
-            self.buf.append(feat)
-            self.last_hand_t = t
-            if len(self.buf) > self.max_frames:
-                self._commit()
-                self.buf.append(feat)
-            if len(self.buf) >= 6 and n % self.every == 0:
-                self.lp = self.m.log_probs(np.stack(self.buf))
-                self.found = ctc.greedy_with_pos(self.lp)
-                self.hyp = "".join(c for c, _, _ in self.found)
-            out["status"] = "reading"
-        elif self.buf and self.last_hand_t is not None and t - self.last_hand_t >= self.gap_s:
-            self.lp = self.m.log_probs(np.stack(self.buf))             # final pass over the whole word
-            self.hyp = "".join(c for c, _, _ in ctc.greedy_with_pos(self.lp))
-            self._commit()
-            out["event"] = {"type": "word"}
-        if self.found:
-            out["letter"], out["conf"] = self.found[-1][0].upper(), self.found[-1][2]
-        if self.lp is not None and present:
-            pr = np.exp(self.lp[-1, :26])
-            out["top3"] = [(ctc.LETTERS[i].upper(), float(pr[i])) for i in np.argsort(-pr)[:3]]
-        out["text"] = self.text
-        return out
+# Live webcam: sliding-window decoding with stable-prefix commit (see streaming.py).
+from src.pipeline.streaming import StreamingSession as ContinuousSession  # noqa: E402,F401
