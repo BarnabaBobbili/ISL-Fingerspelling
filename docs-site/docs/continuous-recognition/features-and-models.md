@@ -5,7 +5,7 @@ title: Features and models
 
 # Continuous recognition: features and models
 
-Continuous fingerspelling is spelling a whole name without stopping at each letter — the hands flow from shape to shape and letters are co-articulated. We treat it as **sequence labelling with CTC** (Connectionist Temporal Classification): the model emits, for every video frame, a probability over 26 letters plus a *blank*, and the loss sums over every frame-to-letter alignment, so no frame-level labels are needed.
+Continuous fingerspelling is the spelling of a whole name without stopping at each letter: the hands flow from shape to shape and letters are co-articulated. It is treated as **sequence labelling with CTC** (Connectionist Temporal Classification): the model emits, for every video frame, a probability over 26 letters plus a *blank*, and the loss sums over every frame-to-letter alignment, so no frame-level labels are needed.
 
 ## Per-frame features (351 numbers)
 
@@ -13,7 +13,7 @@ Continuous fingerspelling is spelling a whole name without stopping at each lett
 
 | Block | Dim | What |
 |---|---:|---|
-| **trunk** | 192 | pooled embedding of the frozen DH-GAT v2 — a learned hand-shape descriptor |
+| **trunk** | 192 | pooled embedding of the frozen DH-GAT — a learned hand-shape descriptor |
 | **probs** | 26 | the DH-GAT's calibrated static class posteriors ("what letter does this frame look like") |
 | **raw** | 126 | shared-frame joint coordinates of both hands |
 | **motion** | 7 | wrist velocity of both hands (x, y), mean landmark speed, two presence flags |
@@ -23,7 +23,7 @@ Frames with no hand have zeros for trunk/probs/raw and presence flags 0.
 ```mermaid
 flowchart LR
     V[Video frames] --> T[MediaPipe 2 hands]
-    T --> S["DH-GAT v2 (frozen)<br/>embedding + posteriors"]
+    T --> S["DH-GAT (frozen)<br/>embedding + posteriors"]
     T --> R["raw shared-frame<br/>coordinates"]
     T --> M["motion<br/>velocities"]
     S --> C[concat 351-d]
@@ -46,11 +46,11 @@ flowchart LR
 | Output | Linear → 27 | Linear → 27 |
 | Parameters | 1,469,049 | 2,569,140 |
 
-A *Conformer block* is feed-forward ½ → multi-head self-attention → convolution module → feed-forward ½ → LayerNorm (re-used from the v1 code). The convolution captures the local shape of a letter (≈ 0.3 – 0.8 s = 10 – 25 frames); attention captures longer dependencies. The kernel was reduced from 31 to 15 because the dataset is small and 31 frames (≈ 1 s) spans two or three letters.
+A *Conformer block* is feed-forward ½ → multi-head self-attention → convolution module → feed-forward ½ → LayerNorm (re-used from the baseline implementation). The convolution captures the local shape of a letter (≈ 0.3 – 0.8 s = 10 – 25 frames); attention captures longer dependencies. The kernel was reduced from 31 to 15 because the dataset is small and 31 frames (≈ 1 s) spans two or three letters.
 
-## What changed relative to the first generation
+## Comparison with the baseline
 
-| | v1 | v2 |
+| | Baseline | Proposed |
 |---|---|---|
 | Input | 63 numbers (one hand, wrist-normalised) | 351 numbers (both hands + pretrained embedding + motion) |
 | Conformer kernel | 31 | 15 |
@@ -58,8 +58,8 @@ A *Conformer block* is feed-forward ½ → multi-head self-attention → convolu
 | Augmentation | none | time-stretch, masks, feature dropout, noise |
 | Conformer result | 19.26 % test CER (worse than the BiLSTM) | see [Benchmark](../evaluation/benchmark) |
 
-The v1 Conformer under-performed the BiLSTM (14.75 %), which is typical of Conformers on ≈ 70 minutes of data. Pre-trained features, augmentation and a smaller convolution kernel fix that.
+The baseline Conformer under-performed the baseline BiLSTM (14.75 %), which is typical of Conformers trained on ≈ 70 minutes of data. Pretrained features, augmentation and a smaller convolution kernel remove this disadvantage.
 
-## Honest note on stacking
+## Note on stacking
 
-The DH-GAT trunk was trained (among other things) on aligned letters from the **training** videos. Its features on training videos are therefore a little "cleaner" than on validation/test videos, a mild optimism that the sequence model could learn to trust. Mitigations in training: the whole trunk block is **zeroed on 25 % of sequences**, feature dropout and noise. The ablation `--parts raw` (no trunk/probs at all) quantifies how much the pre-trained features really contribute: see [Benchmark](../evaluation/benchmark).
+The DH-GAT trunk was trained (among other data) on aligned letters from the **training** videos. Its features on training videos are therefore slightly cleaner than on validation and test videos, a mild optimism that the sequence model could learn to rely on. Mitigations in training: the whole trunk block is **zeroed on 25 % of sequences**, feature dropout and noise. The ablation `--parts raw` (no trunk/probs at all) quantifies the contribution of the pretrained features: see [Benchmark](../evaluation/benchmark).

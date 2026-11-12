@@ -14,6 +14,8 @@ data/
 └── continious-Fingerspelling-dataset/{videos/, fingerspelling_annotations.csv, split_info.csv, …}
 ```
 
+The folders `Static_ISL`, `ISL_DATA` and `Kaggle_ISL_Dataset` hold Static Datasets A, B and C respectively.
+
 ## Run
 
 ```bash
@@ -29,16 +31,16 @@ python -m src.pipeline.cli webcam
 python src/static/extract_v2.py
 python src/static/extract_v2.py --recover --out cache/static_v2r
 
-# 2. CTC-aligned real frames from the continuous videos (needs the v1 BiLSTM + cache/*.npy)
+# 2. CTC-aligned real frames from the continuous videos (needs the baseline BiLSTM and the cached landmarks)
 python src/extraction/align_real_frames.py
 python src/static/extract_v2.py --real --recover --out cache/static_v2r      # re-detect them with recovery
 
-# 3. train + evaluate DH-GAT v2     (ISL_V2_DIR selects the cache folder, ISL_THREADS the CPU threads)
+# 3. train and evaluate the DH-GAT     (ISL_V2_DIR selects the cache folder, ISL_THREADS the CPU threads)
 python src/static/train_v2.py --tag main
 python src/static/train_v2.py --tag xsrc --holdout isl_data
 ISL_V2_DIR=static_v2r python src/static/train_v2.py --tag main_r
 
-# 4. benchmark the legacy v1 model
+# 4. benchmark the baseline model
 python src/static/benchmark.py
 ```
 
@@ -52,13 +54,13 @@ python src/training/train_cont_v2.py --kind bilstm    --parts all --tag bilstm_a
 python src/training/train_cont_v2.py --kind conformer --parts raw --tag conformer_raw --bs 32 --epochs 60   # ablation
 python src/training/select_best_cont.py                        # lowest validation CER → checkpoints/cont_best.pt
 
-# streaming-oriented model (sub-word crops, speed 0.55-1.3x, word joins) — what the app deploys
+# streaming-oriented model (sub-word crops, speed 0.55-1.3x, word joins) — what the application deploys
 python src/training/train_cont_v2.py --kind conformer --parts all --tag conformer_stream --bs 32 --epochs 70 --stream-aug
 python src/evaluation/eval_streaming.py --ckpt checkpoints/cont_v2_conformer_stream.pt --tag stream_test   # live-decoding benchmark
 python src/training/select_best_cont.py --tag conformer_stream  # deploy it (chosen on the live benchmark)
 ```
 
-## Avatar
+## 3D hands (pose library)
 
 ```bash
 ISL_V2_DIR=static_v2r python -m src.avatar.build_poses         # → app/static/data/poses.json, results/avatar_contacts.csv
@@ -108,7 +110,7 @@ python src/evaluation/browser_parity.py out.json
 | raw landmark extraction of all images | 7 min |
 | second-hand recovery extraction | 9 min |
 | CTC alignment + frame extraction | 7 min |
-| DH-GAT v2 training | 19 – 25 min |
+| DH-GAT training | 19 – 25 min |
 | continuous landmark extraction | 25 min |
 | continuous feature build | 2.5 min |
 | continuous model training | 25 – 45 min each |

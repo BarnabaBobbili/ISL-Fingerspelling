@@ -5,7 +5,7 @@ title: Pose library
 
 # Pose library
 
-The avatar does not use hand-modelled poses: every letter's pose is **derived from the real data**, so the avatar signs what the recogniser was trained to recognise.
+The 3D hands do not use hand-modelled poses: every letter's pose is **derived from the real data**, so the 3D hands sign what the recogniser was trained to recognise.
 
 ```bash
 python -m src.avatar.build_poses      # → app/static/data/poses.json  and  results/avatar_contacts.csv
@@ -22,7 +22,7 @@ flowchart LR
     E --> F["poses.json<br/>raw + touched poses + gaps"]
 ```
 
-1. **Candidates.** Up to 500 samples from Static_ISL (and the aligned real frames) whose letter the DH-GAT recognises with confidence > 0.85 and whose number of detected hands matches the letter's hand mode. Static_ISL images come from the [second-hand-recovery](../data/landmark-extraction#second-hand-recovery) cache so two-handed letters such as J and R have enough candidates.
+1. **Candidates.** Up to 500 samples from Static Dataset A (and the aligned real frames) whose letter the DH-GAT recognises with confidence > 0.85 and whose number of detected hands matches the letter's hand mode. Static_ISL images come from the [second-hand-recovery](../data/landmark-extraction#second-hand-recovery) cache so two-handed letters such as J and R have enough candidates.
 2. **Reference = medoid.** The candidate with the smallest summed distance to all others, in the shared frame — a *real* hand pose, not an average that would collapse into a blob.
 3. **Bone regularisation.** MediaPipe's joint positions jitter, so fingers look rubbery. Each finger is rebuilt by forward kinematics with the **median bone lengths** (per hand, scaled by its own size), keeping the measured bone directions.
 4. **Contacts.** For two-handed letters, the in-plane distance between every pair of joints (one per hand) is computed across all candidates; pairs whose **median skin gap** is below 0.30 hand sizes are contacts (at most 4, distinct joints). Only the image-plane distance is used, because MediaPipe's *z* is relative to each hand's own wrist and the depth offset between hands is unobservable.

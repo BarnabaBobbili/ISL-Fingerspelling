@@ -46,15 +46,15 @@ def main():
     ap.add_argument("--streaming-note", default="")
     ap.add_argument("--streaming-base", default=None, help="tag of the previous model's streaming results (adds a comparison column)")
     a = ap.parse_args()
-    names = {"main": "DH-GAT v2", "main_r": "DH-GAT v2 + second-hand recovery",
-             "xsrc": "DH-GAT v2", "xsrc_r": "DH-GAT v2 + second-hand recovery"}
+    names = {"main": "Shared-frame DH-GAT", "main_r": "Shared-frame DH-GAT + second-hand recovery (proposed)",
+             "xsrc": "Shared-frame DH-GAT", "xsrc_r": "Shared-frame DH-GAT + second-hand recovery (proposed)"}
     names.update(dict(kv.split("=", 1) for kv in a.names.split(",") if "=" in kv))
 
     rows, best = [], 0
     v1 = load("benchmark_dh_gat_static_best.json")
     if v1:
         ind, real = get(v1, "in_domain (orig. split)"), get(v1, "real / test videos")
-        rows.append({"name": "DH-GAT v1 (original)", "in_domain": 100 * ind["acc"], "real": 100 * real["acc"],
+        rows.append({"name": "Baseline (per-hand normalisation)", "in_domain": 100 * ind["acc"], "real": 100 * real["acc"],
                      "ece": real["ece"], "ece_cal": None})
     for tag in a.static_runs.split(","):
         r = load(f"benchmark_dh_gat_v2_{tag}.json")
@@ -76,15 +76,15 @@ def main():
             cross.append({"name": names.get(tag, tag), "acc": 100 * h["acc"], "both": 100 * by.get("2", 0),
                           "one": 100 * by.get("1", 0), "ece": hc["ece"]})
 
-    cont = [{"name": "BiLSTM-CTC v1 (one hand, landmarks only)", "params": "—", "val": 14.24, "test": 14.75},
-            {"name": "Conformer-CTC v1 (one hand, landmarks only)", "params": "—", "val": 18.72, "test": 19.26}]
+    cont = [{"name": "BiLSTM-CTC, baseline (one hand, landmarks only)", "params": "—", "val": 14.24, "test": 14.75},
+            {"name": "Conformer-CTC, baseline (one hand, landmarks only)", "params": "—", "val": 18.72, "test": 19.26}]
     tags = []
     for f in sorted(R.glob("cont_v2_*.json")):
         r = json.loads(f.read_text())
         kind = "Conformer" if r["kind"] == "conformer" else "BiLSTM"
-        label = f"{kind}-CTC v2" + ("" if r["parts"] == "all" else " (no pretrained features)")
+        label = f"{kind}-CTC" + ("" if r["parts"] == "all" else " (no pretrained features)")
         if r["tag"].endswith("_stream"):
-            label += " + streaming training"
+            label += " + streaming training (proposed)"
         cont.append({"name": label, "params": f"{r['params']:,}", "val": 100 * r["val_cer"], "test": 100 * r["test_cer"], "tag": r["tag"]})
         tags.append(r["tag"])
     ok = [i for i, c in enumerate(cont) if "tag" in c and "no pretrained" not in c["name"]]

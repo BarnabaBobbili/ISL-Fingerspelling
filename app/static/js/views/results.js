@@ -17,44 +17,44 @@ function render(d) {
     const cross = d.cross[d.cross.length - 1];
     let h = '';
 
-    h += `<section class="result-block"><h2>Reading single letters</h2>
-      <p class="lede">The same model, scored three ways. A random split of the training images says 98%. Held-out news video — small hands, a full-body shot, a different studio — says ${pct(best.real)}. A camera the model has never seen says ${pct(cross.acc)}. The honest figure for <em>your</em> webcam lies somewhere between the last two.</p>
+    h += `<section class="result-block"><h2>Isolated letter recognition</h2>
+      <p class="lede">The proposed model is evaluated under three protocols. A random split of the training images gives ${pct(best.in_domain, 0)}. Held-out frames from real continuous-fingerspelling videos give ${pct(best.real)}. A dataset recorded with a different camera and never used in training gives ${pct(cross.acc)}. Accuracy on a new camera is expected to lie between the last two figures.</p>
       <div class="cols-2"><div>
         <h3 style="margin-bottom:var(--s-2)">${esc(best.name)}</h3>
-        ${bars([{ label: 'Random split (near-duplicate frames)', value: best.in_domain, cls: 'muted' }, { label: 'Held-out news video', value: best.real }, { label: 'Unseen camera and signer', value: cross.acc, cls: 'warn' }])}
-        <p class="hint">Confidence is calibrated: expected calibration error on news video is ${best.ece_cal.toFixed(3)} (${s.rows[0].ece.toFixed(2)} for the first version).</p>
+        ${bars([{ label: 'Random split (near-duplicate images)', value: best.in_domain, cls: 'muted' }, { label: 'Held-out real-video frames', value: best.real }, { label: 'Unseen dataset (different camera)', value: cross.acc, cls: 'warn' }])}
+        <p class="hint">Confidence is calibrated: the expected calibration error on the real-video frames is ${best.ece_cal.toFixed(3)}, against ${s.rows[0].ece.toFixed(2)} for the baseline.</p>
       </div><div>
-        ${table(['Model', 'Random split', 'News video', 'ECE'], s.rows.map(r => [esc(r.name), pct(r.in_domain, 2), pct(r.real, 2), (r.ece_cal ?? r.ece).toFixed(3)]), { hl: s.best })}
+        ${table(['Model', 'Random split', 'Real-video frames', 'ECE'], s.rows.map(r => [esc(r.name), pct(r.in_domain, 2), pct(r.real, 2), (r.ece_cal ?? r.ece).toFixed(3)]), { hl: s.best })}
       </div></div></section>`;
 
-    h += `<section class="result-block"><h2>Why the unseen camera is harder</h2>
-      <p class="lede">Training without the ISL_DATA collection and testing on it gives a realistic picture of a new setting. Most of the loss comes from MediaPipe finding only one of two overlapping hands, which is why second-hand recovery was added.</p>
-      ${table(['Model (trained without ISL_DATA)', 'Accuracy', 'Both hands found', 'One hand found', 'ECE'], d.cross.map(r => [esc(r.name), `<b>${pct(r.acc)}</b>`, pct(r.both), pct(r.one), r.ece.toFixed(3)]), { hl: d.cross.length - 1 })}</section>`;
+    h += `<section class="result-block"><h2>Generalisation to an unseen dataset</h2>
+      <p class="lede">The model is trained without Static Dataset B and tested on it, which approximates use with a new camera. Most of the loss is caused by MediaPipe detecting only one of two overlapping hands; second-hand recovery was introduced to address this.</p>
+      ${table(['Model (trained without Static Dataset B)', 'Accuracy', 'Both hands found', 'One hand found', 'ECE'], d.cross.map(r => [esc(r.name), `<b>${pct(r.acc)}</b>`, pct(r.both), pct(r.one), r.ece.toFixed(3)]), { hl: d.cross.length - 1 })}</section>`;
 
     const c = d.continuous, cb = c.rows[c.best];
-    h += `<section class="result-block"><h2>Spelling whole names</h2>
-      <p class="lede">Flowing fingerspelling from the news-interpreter dataset, scored as character error rate on videos the model never saw. Lower is better. The sequence model only beats the older recurrent baseline when it starts from the pretrained hand-shape features.</p>
+    h += `<section class="result-block"><h2>Continuous name recognition</h2>
+      <p class="lede">Character error rate (lower is better) on held-out test videos of the Continuous Fingerspelling Dataset. The Conformer outperforms the BiLSTM baseline only when it uses the pretrained hand-shape features.</p>
       <div class="cols-2"><div>${bars(c.rows.map((r, k) => ({ label: r.name, value: r.test, cls: k === c.best ? '' : 'muted' })), { max: 25, fmt: v => pct(v, 2) })}</div>
       <div>${table(['Model', 'Parameters', 'Validation', 'Test'], c.rows.map(r => [esc(r.name), r.params, pct(r.val, 2), pct(r.test, 2)]), { hl: c.best })}</div></div></section>`;
 
     if (d.streaming && d.streaming.rows.length) {
         const st = d.streaming;
-        h += `<section class="result-block"><h2>Live, while frames arrive</h2>
-          <p class="lede">The live recogniser re-reads a sliding window and commits a letter once it is safely in the past. These runs replay held-out videos through exactly that code, at faster signing speeds and on slower cameras.</p>
-          ${table(st.rows.some(r => r.before != null) ? ['Condition', 'Previous model (live)', 'Whole clip', 'Live decoder', 'Letter delay (median)'] : ['Condition', 'Whole clip', 'Live decoder', 'Letter delay (median)', '90th percentile'], st.rows.map(r => st.rows.some(x => x.before != null) ? [esc(r.condition), pct(r.before, 2), pct(r.whole, 2), `<b>${pct(r.stream, 2)}</b>`, `${r.lat_median.toFixed(2)} s`] : [esc(r.condition), pct(r.whole, 2), `<b>${pct(r.stream, 2)}</b>`, `${r.lat_median.toFixed(2)} s`, `${r.lat_p90.toFixed(2)} s`]))}
+        h += `<section class="result-block"><h2>Live decoding</h2>
+          <p class="lede">The live recogniser decodes a sliding window and finalises a letter once it lies sufficiently far in the past. Held-out videos were replayed through the same code at faster signing speeds and on slower cameras.</p>
+          ${table(st.rows.some(r => r.before != null) ? ['Condition', 'Without streaming training (live)', 'Whole clip', 'Live decoder', 'Letter delay (median)'] : ['Condition', 'Whole clip', 'Live decoder', 'Letter delay (median)', '90th percentile'], st.rows.map(r => st.rows.some(x => x.before != null) ? [esc(r.condition), pct(r.before, 2), pct(r.whole, 2), `<b>${pct(r.stream, 2)}</b>`, `${r.lat_median.toFixed(2)} s`] : [esc(r.condition), pct(r.whole, 2), `<b>${pct(r.stream, 2)}</b>`, `${r.lat_median.toFixed(2)} s`, `${r.lat_p90.toFixed(2)} s`]))}
           <p class="hint">${esc(st.note || '')}</p></section>`;
     }
 
-    h += `<section class="result-block"><h2>Making joints touch</h2>
-      <p class="lede">Two-handed letters are defined by contact. Raw landmarks leave gaps or poke through; a rigid alignment plus finger inverse kinematics closes them. Distances are in hand sizes (one is about 9.5 cm).</p>
+    h += `<section class="result-block"><h2>Contact alignment</h2>
+      <p class="lede">Two-handed letters are defined by contact. Raw landmarks leave gaps or interpenetrate; a rigid alignment followed by finger inverse kinematics closes them. Distances are in hand sizes (one hand size is about 9.5 cm).</p>
       <div class="cols-2"><div>${bars([{ label: 'Landmarks as detected', value: d.avatar.raw, cls: 'muted' }, { label: 'After alignment', value: d.avatar.touched }], { max: d.avatar.raw * 1.1, fmt: v => v.toFixed(3) })}
-      <p class="hint">Mean gap over the ${d.avatar.letters} letters that have contacts.</p></div></div></section>`;
+      <p class="hint">Mean gap over the ${d.avatar.letters} letters that have contact points.</p></div></div></section>`;
 
-    h += `<section class="result-block"><h2>Where it falls short</h2>
-      <ul style="max-width:68ch;color:var(--ink-2);padding-left:1.2em"><li>The same few interpreters appear across the news videos, so those scores measure new clips, not new people.</li>
-      <li>On a camera it has not seen, expect noticeably lower accuracy and over-confident scores; fine-tuning on your own recordings is the best remedy.</li>
-      <li>Q and R still lose a hand in most frames; J, Q and S have no reliable contact point for the signer.</li>
-      <li>The continuous model has no space symbol, so words are separated by a short pause.</li></ul></section>`;
+    h += `<section class="result-block"><h2>Limitations</h2>
+      <ul style="max-width:68ch;color:var(--ink-2);padding-left:1.2em"><li>The documentation of the continuous dataset does not state the number of signers, so scores on held-out videos measure unseen clips and not necessarily unseen signers.</li>
+      <li>On an unseen camera, accuracy is noticeably lower and the confidence is over-estimated; fine-tuning on recordings from the target camera is expected to be the most effective remedy.</li>
+      <li>Letters Q and R are frequently detected with one hand only; J, Q and S have no reliable contact points for the 3D hands.</li>
+      <li>The continuous model has no space symbol; words are separated by a short pause.</li></ul></section>`;
     $('results-body').innerHTML = h;
 }
 

@@ -5,7 +5,7 @@ title: Live streaming
 
 # Live streaming
 
-Reading a recorded video is easy: the whole clip is available. Reading a webcam is harder — letters arrive one frame at a time, the camera may run at 15, 30 or 60 frames per second, and the answer on screen should be right *and* quick, even when the signer changes letters fast. This page describes how the live recogniser (`src/pipeline/streaming.py`) does it.
+Reading a recorded video is simpler because the whole clip is available. Reading a webcam is harder: letters arrive one frame at a time, the camera may run at 15, 30 or 60 frames per second, and the answer on screen should be right *and* quick, even when the signer changes letters fast. This page describes how the live recogniser (`src/pipeline/streaming.py`) does it.
 
 ```mermaid
 flowchart LR
@@ -20,7 +20,7 @@ flowchart LR
 
 ## 1 · Track in the browser
 
-The hand tracker (`app/static/js/tracker.js`, the same `hand_landmarker.task` as the server) runs on every camera frame inside the page. Only the joint positions travel to the server, so there is no JPEG encoding, no upload and no detection on the server's critical path. With the browser's GPU delegate, tracking is meant to keep up with the camera's frame rate, where the server-side tracker managed roughly 10 fps. (Measured here: the server answers each landmark packet in about 5 ms, so it is not the bottleneck; tracking speed itself depends on the machine — a GPU-less headless test browser managed only a few frames per second, and a real laptop has not been benchmarked yet.) The skeleton you see is drawn from the *local* result, so it never lags behind the picture. If the browser tracker cannot start, the page falls back to the old server-side path.
+The hand tracker (`app/static/js/tracker.js`, the same `hand_landmarker.task` as the server) runs on every camera frame inside the page. Only the joint positions travel to the server, so there is no JPEG encoding, no upload and no detection on the server's critical path. With the browser's GPU delegate, tracking is meant to keep up with the camera's frame rate, where the server-side tracker managed roughly 10 fps. (Measured: the server answers each landmark packet in about 5 ms, so it is not the bottleneck. Tracking speed depends on the machine: a GPU-less headless test browser managed only a few frames per second, and in-browser tracking has not yet been benchmarked on a typical laptop.) The skeleton on screen is drawn from the *local* result, so it never lags behind the picture. If the browser tracker cannot start, the page falls back to server-side tracking.
 
 *Parity check.* The browser tracker was compared with the server tracker the models were trained on by replaying six held-out test videos frame by frame (`tests/browser_parity.mjs`, `src/evaluation/browser_parity.py`). Recognition from the browser's landmarks gave **the same names as the server pipeline on all six videos (0.0 % character error in both)** and hand presence agreed on every frame. In tracking mode (the fast mode used live) the joint positions differ from the server's by a median of 0.11 hand sizes; in full-detection mode, which is what training used, by 0.02 — the models read both identically.
 
@@ -32,7 +32,7 @@ The models were trained on 30 fps video. `Resampler` linearly interpolates the i
 
 Every second frame, the Conformer re-decodes a window of the most recent frames. A letter is only **committed** when its CTC run has ended and its peak is at least 12 frames (0.4 s) old; younger letters are shown as a greyed **tentative tail** that may still change. After each decode the window slides past the committed letters (keeping 2 s of left context), so the cost stays bounded however long someone spells. Hands out of view for 1 s end the word.
 
-This gives a stable screen — committed letters never change — and a bounded, honest delay: the median letter appears **0.40 s** after it was signed (90th percentile 0.43 s).
+This gives a stable screen — committed letters never change — and a bounded delay: the median letter appears **0.40 s** after it was signed (90th percentile 0.43 s).
 
 ## 4 · Training for it
 

@@ -5,7 +5,7 @@ title: The 3D hands
 
 # The 3D hands
 
-`app/static/js/avatar.js` draws two **skinned 3D hands with cloth sleeves** with [Three.js](https://threejs.org/) (vendored in `app/static/vendor/`, so the app works offline). There is deliberately no head or body: an earlier version with a full upper-body figure looked uncanny and bent the arms at odd angles, so the signing is shown the way a learner needs it — hands and forearms, large, in the orientation the data gives.
+`app/static/js/avatar.js` draws two **skinned 3D hands with cloth sleeves** with [Three.js](https://threejs.org/) (vendored in `app/static/vendor/`, so the app works offline). There is deliberately no head or body: the signing is shown the way a learner needs it, as large hands and forearms in the orientation given by the data.
 
 ![The hands spelling the letter H](/img/av_H.png)
 
@@ -18,13 +18,13 @@ The hands are a real skinned mesh (the MIT-licensed *generic hand* from the WebX
 3. every finger bone is turned so that its axis points at the next landmark, as the **shortest rotation from the orientation the previous bone in the chain just received** — each bone inherits the twist of the one before, so fingers stay flat against the palm and curl in the right plane;
 4. skinning then deforms the mesh, so a fingertip that the landmarks put on a palm really touches it.
 
-:::note A detail that mattered
+:::note Implementation note
 This hand model's skeleton is *flat*: all 25 bones hang directly off one `Armature` node with absolute transforms. Reading "child offsets" and "parent rotations" from it, as most retargeting code does, produces shredded fingers. The rig therefore works from **bind-pose world transforms** and carries rotations along the finger chains itself. A test feeds the hand its own bind-pose joints and requires every bone to come back to within 0.001 of its original position and rotation.
 :::
 
 ### Left and right hands — never mirrored
 
-Each pose records the handedness its landmarks actually show (the sign of the triple product *(index knuckle × pinky knuckle) · thumb knuckle*, stored as `chir` in `poses.json`). The renderer keeps a **right-type and a left-type mesh per hand slot and shows the one that matches**, so every letter keeps exactly the shape and orientation in the data. (An earlier attempt to force each slot to a fixed handedness by mirroring the pose across the palm plane changed some signs and was dropped.) When two consecutive letters need different types for a hand, the mesh switches halfway through the movement.
+Each pose records the handedness its landmarks actually show (the sign of the triple product *(index knuckle × pinky knuckle) · thumb knuckle*, stored as `chir` in `poses.json`). The renderer keeps a **right-type and a left-type mesh per hand slot and shows the one that matches**, so every letter keeps exactly the shape and orientation in the data. (Forcing each slot to a fixed handedness by mirroring the pose across the palm plane was rejected because it changed the shape of some signs.) When two consecutive letters need different types for a hand, the mesh switches halfway through the movement.
 
 ## Sleeves
 

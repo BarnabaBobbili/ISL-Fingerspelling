@@ -11,13 +11,18 @@ The server (`app/server.py`, Starlette + uvicorn) exposes a small HTTP/WebSocket
 
 ```json
 {"name": "ISL Fingerspelling", "characters": ["A", "…", "Z"], "one_handed": ["C","I","L","O","U","V"],
- "static_model": "DH-GAT v2", "continuous_model": "Conformer-CTC v2",
+ "static_model": "DH-GAT", "continuous_model": "Conformer-CTC", "static_recover": true,
  "continuous_available": true, "ready": true}
 ```
 
 ## `WS /ws/live?mode=static|continuous`
 
-The client sends **binary JPEG frames**; after each frame it waits for the reply before sending the next. It may also send text commands `{"cmd": "reset" | "space" | "backspace"}`.
+The client sends one message per camera frame and receives one reply per message. Two message types are accepted:
+
+- **Landmark packet** (text, JSON), used when hand tracking runs in the browser: `{"type": "lm", "t": seconds, "w": width, "h": height, "hands": [[[x, y, z] × 21], …]}`, with `x`, `y` normalised to the image and `z` relative to the wrist of that hand. The packet is about 1 KB.
+- **JPEG frame** (binary), used by the server-side tracking fallback.
+
+Text commands `{"cmd": "reset" | "space" | "backspace"}` edit the recognised text.
 
 Reply (one JSON object per frame):
 
@@ -28,7 +33,8 @@ Reply (one JSON object per frame):
 | `conf` | float | calibrated confidence 0–1 |
 | `top3` | `[[letter, p], …]` | alternatives |
 | `status` | string | `no_hand`, `moving`, `holding`, `committed` (static) · `reading`, `no_hand` (continuous) |
-| `text` | string | text typed so far |
+| `text` | string | text typed so far (committed letters) |
+| `tentative` | string | continuous mode: letters not yet final |
 | `event` | object \| null | `{type: "letter"\|"space"\|"word", …}` when something was just typed |
 | `ms` | float | server processing time |
 | `error` | string | only if the mode is unavailable (e.g. no continuous checkpoint) |

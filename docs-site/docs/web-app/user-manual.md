@@ -17,8 +17,8 @@ Two sources, chosen with the tabs: **Live camera** and **Video file**.
 
 | Control | What it does |
 |---|---|
-| **Start camera / Stop** | opens the webcam (the browser asks permission). Hand tracking runs **inside the page**, so no pictures leave your computer — only about 1 KB of joint positions per frame goes to the local server. |
-| **What are you signing?** | *Flowing spelling* reads names and words spelled at a natural pace; *Single letters* types a letter each time you hold one still. |
+| **Start camera / Stop** | opens the webcam (the browser asks permission). Hand tracking runs **inside the page**, so no pictures leave the computer — only about 1 KB of joint positions per frame goes to the local server. |
+| **Signing style** | *Flowing spelling* reads names and words spelled at a natural pace; *Single letters* types a letter each time one is held still. |
 | **Mirror the preview** | flips the picture like a mirror (recognition is unaffected) |
 | **Show tracked joints** | draws the detected joints on the video |
 | **Speak, Copy, space, ⌫, Clear** | work on the text |
@@ -27,7 +27,7 @@ On the picture: a **tile with the current letter**, a **confidence meter** and a
 
 Under the text box: frames per second, the delay between a frame and its answer, the number of hands seen, and whether tracking runs in the browser or (as a fallback) on the server.
 
-**Tips.** Keep both hands in view for two-handed letters, use even light and a plain background, and take your hands out of the picture for a moment between words (that is what ends a word in flowing mode).
+**Tips.** Keep both hands in view for two-handed letters, use even lighting and a plain background, and lower the hands out of the picture briefly between words (this ends a word in flowing mode).
 
 ### Video file
 
@@ -37,7 +37,7 @@ Drop a video (mp4, mov, avi, mkv or webm, up to 300 MB), choose the signing styl
 - **Key frames** — one thumbnail per recognised letter with its confidence and time; click one to jump there;
 - **Text** with *Speak*, *Copy*, a download link for the **annotated video** (WebM) and the raw **JSON**.
 
-Everything is processed locally. Uploaded files are kept under `results/web_jobs/` on your computer.
+Everything is processed locally. Uploaded files are kept under `results/web_jobs/` on the local computer.
 
 ## Sign
 

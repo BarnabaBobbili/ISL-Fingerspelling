@@ -21,8 +21,8 @@ function tab(which) {
 /* ------------------------------------------------------------------ live */
 function hintFor(mode) {
     $('live-hint').textContent = mode === 'continuous'
-        ? 'Spell at your normal pace and take your hands out of view for a moment between words. Letters in grey are still tentative.'
-        : 'Hold each letter still for about a third of a second. To type the same letter twice, drop your hands a little in between.';
+        ? 'Spell at a natural pace and lower the hands out of view briefly between words. Letters in grey are still tentative.'
+        : 'Hold each letter still for about a third of a second. To repeat a letter, lower the hands slightly in between.';
 }
 async function startLive() {
     $('live-start').disabled = true;

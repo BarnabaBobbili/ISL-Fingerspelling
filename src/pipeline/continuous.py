@@ -38,7 +38,7 @@ class ContinuousModel:
         self.model.eval()
         self.mean, self.std, self.cols = ck["mean"], ck["std"], ck["cols"]
         self.trunk, self.temp = F.load_trunk(trunk_ckpt)
-        self.name = f"{'Conformer' if self.cfg['kind'] == 'conformer' else 'BiLSTM'}-CTC v2"
+        self.name = f"{'Conformer' if self.cfg['kind'] == 'conformer' else 'BiLSTM'}-CTC"
         self.val_cer, self.test_cer = ck.get("val_cer"), ck.get("test_cer")
 
     @classmethod

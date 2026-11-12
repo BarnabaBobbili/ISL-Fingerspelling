@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Varna — Indian Sign Language fingerspelling</title>
-<meta name="description" content="Read and sign Indian Sign Language fingerspelling in the browser: live camera recognition, video analysis and a 3D signer.">
+<title>ISL fingerspelling — recognition and generation</title>
+<meta name="description" content="Recognition and generation of Indian Sign Language fingerspelling: live camera recognition, video analysis and a 3D hand model that signs text.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e5a5f'/%3E%3Cpath d='M9 23 16 8l7 15M11.5 18h9' stroke='%23fcf9f1' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <script>
   /* apply the saved / preferred theme before first paint (no flash) */
@@ -25,7 +25,7 @@
 
 <header class="site-header">
   <div class="bar">
-    <a class="brand" href="#/" aria-label="Varna, home"><b>Varna</b><span>ISL fingerspelling</span></a>
+    <a class="brand" href="#/" aria-label="ISL fingerspelling, home"><b>ISL fingerspelling</b></a>
     <nav class="nav" id="nav" aria-label="Main">
       <a href="#/recognise" data-route="recognise">Recognise</a>
       <a href="#/sign" data-route="sign">Sign</a>
@@ -49,45 +49,45 @@
       <div>
         <span class="eyebrow">Indian Sign Language</span>
         <h1>Fingerspelling, <em>read</em> and signed.</h1>
-        <p class="lead">Point a camera at someone spelling a name and watch the letters appear. Or type a word and watch a signer spell it out. Everything runs on your own machine.</p>
+        <p class="lead">A system that recognises Indian Sign Language fingerspelling from a live camera or a video file, and generates it from text with a 3D hand model. All processing is performed locally.</p>
         <div class="btn-row">
           <a class="btn primary" href="#/recognise"><i data-icon="camera"></i>Open the camera</a>
-          <a class="btn" href="#/sign"><i data-icon="hand"></i>Try the signer</a>
+          <a class="btn" href="#/sign"><i data-icon="hand"></i>Sign a text</a>
         </div>
       </div>
       <div>
         <div class="stage"><canvas id="hero-canvas" aria-label="3D signer spelling words"></canvas></div>
-        <div class="hero-caption"><span>signing <b id="hero-word">NAMASTE</b></span><a class="link-arrow" href="#/sign">Sign your own text</a></div>
+        <div class="hero-caption"><span>signing <b id="hero-word">NAMASTE</b></span><a class="link-arrow" href="#/sign">Sign a text</a></div>
       </div>
     </div>
 
     <div class="facts" id="home-facts" aria-label="Headline results">
-      <div class="fact"><div class="n">95.9<small>%</small></div><p>letters recognised on held-out news video</p></div>
-      <div class="fact"><div class="n">3.9<small>%</small></div><p>character error rate spelling unseen names</p></div>
-      <div class="fact"><div class="n">0<small> frames</small></div><p>uploaded: hand tracking runs in your browser</p></div>
+      <div class="fact"><div class="n">95.9<small>%</small></div><p>letters recognised on held-out real-video frames</p></div>
+      <div class="fact"><div class="n">3.6<small>%</small></div><p>character error rate on unseen spelled names</p></div>
+      <div class="fact"><div class="n">0<small> images</small></div><p>sent to the server; hand tracking runs in the browser</p></div>
       <div class="fact"><div class="n">26</div><p>letters, 20 of them signed with two hands</p></div>
     </div>
 
     <div class="section">
-      <h2>Three ways in</h2>
+      <h2>Features</h2>
       <div class="entry-grid">
-        <a class="entry" href="#/recognise"><i data-icon="camera" data-size="30" class="glyph"></i><h3>Read signs</h3><p>Live from a webcam or from a video file. Letters, a confidence score and key frames, drawn on the picture.</p><span class="link-arrow">Recognise</span></a>
-        <a class="entry" href="#/sign"><i data-icon="hand" data-size="30" class="glyph"></i><h3>Sign text</h3><p>A 3D signer spells what you type or dictate, with the joints that touch brought together.</p><span class="link-arrow">Sign</span></a>
-        <a class="entry" href="#/alphabet"><i data-icon="alpha" data-size="30" class="glyph"></i><h3>Learn the alphabet</h3><p>All 26 letters, which use one hand and which use two, and where the hands meet.</p><span class="link-arrow">Alphabet</span></a>
+        <a class="entry" href="#/recognise"><i data-icon="camera" data-size="30" class="glyph"></i><h3>Recognise signs</h3><p>From a live webcam or a video file, with the letter, a confidence score and key frames drawn on the picture.</p><span class="link-arrow">Recognise</span></a>
+        <a class="entry" href="#/sign"><i data-icon="hand" data-size="30" class="glyph"></i><h3>Sign text</h3><p>A 3D hand model spells typed or dictated text; the joints that touch are brought together.</p><span class="link-arrow">Sign</span></a>
+        <a class="entry" href="#/alphabet"><i data-icon="alpha" data-size="30" class="glyph"></i><h3>Alphabet reference</h3><p>All 26 letters, showing which use one hand and which use two, and where the hands meet.</p><span class="link-arrow">Alphabet</span></a>
       </div>
     </div>
 
     <div class="section">
       <h2>How it works</h2>
       <div class="steps">
-        <div class="step"><h3>Track the hands</h3><p>MediaPipe finds both hands and 21 joints on each, 30 times a second, right in the browser.</p></div>
-        <div class="step"><h3>Understand the shape</h3><p>A graph-attention network looks at both hands together, so “fingertip on the other palm” is something it can actually see.</p></div>
-        <div class="step"><h3>Spell the word</h3><p>A Conformer sequence model turns the stream of hand shapes into letters, even when they run together.</p></div>
+        <div class="step"><h3>Hand tracking</h3><p>MediaPipe detects both hands and 21 joints on each, up to 30 times a second, inside the browser.</p></div>
+        <div class="step"><h3>Shape classification</h3><p>A graph-attention network (DH-GAT) processes both hands jointly, so that contact such as a fingertip on the other palm is represented explicitly.</p></div>
+        <div class="step"><h3>Word decoding</h3><p>A Conformer sequence model with CTC decoding converts the stream of hand shapes into letters, including letters signed in quick succession.</p></div>
       </div>
     </div>
 
     <div class="section">
-      <p class="note">Accuracy on your own camera will differ from the figures above. The <a href="#/results">results page</a> shows what was measured, including a test on a camera the model never saw, and where it falls short.</p>
+      <p class="note">Accuracy depends on the camera and the signer. The <a href="#/results">results page</a> reports the measured figures, including an evaluation on a camera not seen in training, and the limitations of the system.</p>
     </div>
   </div>
 </section>
@@ -98,7 +98,7 @@
     <div class="page-head">
       <span class="eyebrow">Sign → text</span>
       <h1>Recognise</h1>
-      <p>Spell with a webcam or upload a video. The letter and how sure the model is are drawn on top of the picture.</p>
+      <p>Recognise fingerspelling from a webcam or an uploaded video. The recognised letter and its confidence are drawn on the picture.</p>
     </div>
     <div class="tabs" role="tablist" aria-label="Source">
       <button role="tab" id="tab-live" aria-selected="true" aria-controls="pane-live">Live camera</button>
@@ -107,7 +107,7 @@
 
     <div id="pane-live" role="tabpanel" aria-labelledby="tab-live" class="split">
       <div>
-        <div class="stage"><canvas id="live-stage" width="1280" height="720"></canvas><div class="overlay" id="live-msg"><span>Press <b>Start camera</b> to begin.<br><small style="color:inherit;opacity:.7">Frames never leave your computer.</small></span></div></div>
+        <div class="stage"><canvas id="live-stage" width="1280" height="720"></canvas><div class="overlay" id="live-msg"><span>Press <b>Start camera</b> to begin.<br><small style="color:inherit;opacity:.7">Video frames are processed on this device and are not uploaded.</small></span></div></div>
       </div>
       <aside class="stack">
         <div class="panel">
@@ -116,7 +116,7 @@
             <button class="btn primary" id="live-start" type="button"><i data-icon="camera"></i>Start camera</button>
             <button class="btn" id="live-stop" type="button" disabled><i data-icon="stop"></i>Stop</button>
           </div>
-          <label class="field"><span>What are you signing?</span>
+          <label class="field"><span>Signing style</span>
             <select id="live-mode">
               <option value="continuous">Flowing spelling (names, words)</option>
               <option value="static">Single letters, held still</option>
@@ -124,7 +124,7 @@
           </label>
           <label class="check"><input type="checkbox" id="live-mirror" checked> Mirror the preview</label>
           <label class="check"><input type="checkbox" id="live-skel" checked> Show tracked joints</label>
-          <p class="hint" id="live-hint">Spell at your normal pace and take your hands out of view for a moment between words.</p>
+          <p class="hint" id="live-hint">Spell at a natural pace and lower the hands out of view briefly between words.</p>
         </div>
         <div class="panel">
           <h3>Text</h3>
@@ -164,7 +164,7 @@
             </select>
           </label>
           <div id="up-progress" hidden><div class="progress"><i id="up-bar"></i></div><div class="progress-label" id="up-ptext">queued</div></div>
-          <p class="hint" id="up-hint">Flowing mode reads names spelled without pauses. Held-letter mode finds the moments a sign is held still.</p>
+          <p class="hint" id="up-hint">Flowing mode reads names spelled without pauses. Single-letter mode finds the moments at which a sign is held still.</p>
         </div>
         <div class="panel">
           <h3>Result</h3>
@@ -188,7 +188,7 @@
     <div class="page-head">
       <span class="eyebrow">Text → sign</span>
       <h1>Sign</h1>
-      <p>Type or dictate a word and the signer spells it, letter by letter. Drag to look around.</p>
+      <p>Type or dictate text and the 3D hands spell it letter by letter. Drag to rotate the view.</p>
     </div>
     <div class="split">
       <div class="stage tall">
@@ -219,7 +219,7 @@
             <select id="sg-skin"><option value="medium">Medium</option><option value="light">Light</option><option value="deep">Deep</option></select>
           </label>
           <button class="btn sm" id="sg-rec" type="button"><i data-icon="record"></i>Record a clip</button>
-          <p class="hint">With contact alignment on, joints that touch in a letter — a fingertip on a palm, say — are brought together using a rigid alignment and finger inverse kinematics.</p>
+          <p class="hint">With contact alignment enabled, joints that touch in a letter, for example a fingertip on a palm, are brought together by a rigid alignment and finger inverse kinematics.</p>
         </div>
       </aside>
     </div>
@@ -232,7 +232,7 @@
     <div class="page-head">
       <span class="eyebrow">Reference</span>
       <h1>Alphabet</h1>
-      <p>All 26 letters as the signer makes them. Six use one hand; twenty use two, and most of those are defined by where the hands touch.</p>
+      <p>All 26 letters as formed by the 3D hands. Six use one hand and twenty use two; most of the two-handed letters are defined by where the hands touch.</p>
     </div>
     <div class="toolbar">
       <div class="seg" id="alpha-filter" role="group" aria-label="Filter">
@@ -259,9 +259,9 @@
 <section class="view" data-view="results">
   <div class="wrap tight">
     <div class="page-head">
-      <span class="eyebrow">Measured, not claimed</span>
+      <span class="eyebrow">Evaluation</span>
       <h1>Results</h1>
-      <p>Every figure comes from a script in the repository. Three tests are always shown together, because the easy one flatters.</p>
+      <p>All figures are produced by evaluation scripts in the repository. Isolated-letter recognition is reported under three protocols, since a random split alone overstates performance.</p>
     </div>
     <div id="results-body"><p class="small">Loading…</p></div>
   </div>
@@ -276,7 +276,7 @@
 
 <footer class="site-footer" id="site-footer">
   <div class="inner">
-    <span><b style="font-family:var(--font-display);font-size:1.1rem;color:var(--ink)">Varna</b> &nbsp;Indian Sign Language fingerspelling. Runs on your computer; nothing is sent to the internet.</span>
+    <span><b style="font-family:var(--font-display);font-size:1.1rem;color:var(--ink)">ISL fingerspelling</b> &nbsp;Recognition and generation of Indian Sign Language fingerspelling. All processing takes place on the local computer.</span>
     <span><a href="#/docs">Documentation</a> · <a href="#/results">Results</a> · <span id="foot-models"></span></span>
   </div>
 </footer>

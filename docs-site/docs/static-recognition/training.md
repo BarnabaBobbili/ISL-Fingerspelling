@@ -7,15 +7,15 @@ title: Training and calibration
 
 ```bash
 python src/static/train_v2.py --tag main                        # final model
-python src/static/train_v2.py --tag xsrc --holdout isl_data     # cross-source experiment
+python src/static/train_v2.py --tag xsrc --holdout isl_data     # cross-dataset experiment
 ```
 
 ## Data
 
 | Pool | Content | Role |
 |---|---|---|
-| `train_static` | Static_ISL + ISL_DATA + Kaggle, original train split | bulk of the data |
-| `train_real` | aligned news-video letters from **training videos** | target domain, sampled 4× more often |
+| `train_static` | Static Datasets A, B and C, original train split | bulk of the data |
+| `train_real` | aligned real-video letters from **training videos** | target domain, sampled 4× more often |
 | `val_real` | aligned letters from validation videos | **model selection** and calibration |
 | `test_real` | aligned letters from test videos | final test |
 
@@ -43,35 +43,35 @@ AdamW (lr 2·10⁻³, weight decay 10⁻²), one-cycle schedule, label smoothing
 
 ## Calibration
 
-Raw soft-max scores are rarely trustworthy. After training, a single **temperature** `T` is fitted on the validation real-video logits by minimising negative log-likelihood (L-BFGS); the deployed confidence is `softmax(logits / T)` with `T ≈ 0.84` stored in the checkpoint. The **expected calibration error (ECE)** on real test videos fell from **0.17** (v1) to **0.011** (final model): a displayed 96 % really means about 96 %.
+Raw soft-max scores are rarely trustworthy. After training, a single **temperature** `T` is fitted on the validation real-video logits by minimising negative log-likelihood (L-BFGS); the deployed confidence is `softmax(logits / T)` with `T ≈ 0.84` stored in the checkpoint. The **expected calibration error (ECE)** on real test videos fell from **0.17** (baseline) to **0.011** (proposed model): a displayed 96 % really means about 96 %.
 
 :::caution Calibration does not transfer to new setups
-On a completely unseen source (ISL_DATA, never trained on) the model is *over-confident*: ECE 0.08 uncalibrated, 0.13 after the real-video temperature (0.14 → 0.18 without second-hand recovery). Confidence is only as good as the match between the live camera and the training domain — see [Limitations](../evaluation/limitations).
+On a completely unseen dataset (Static Dataset B, excluded from training) the model is *over-confident*: ECE 0.08 uncalibrated, 0.13 after the real-video temperature (0.14 → 0.18 without second-hand recovery). Confidence is only as good as the match between the live camera and the training domain — see [Limitations](../evaluation/limitations).
 :::
 
-## Second-hand recovery (adopted)
+## Second-hand recovery
 
 Every image was re-extracted with [second-hand recovery](../data/landmark-extraction#second-hand-recovery) and the model retrained (`--tag main_r`, `--tag xsrc_r`). Compared with the same training on plain landmarks:
 
 | | plain landmarks | with recovery |
 |---|---:|---:|
-| real news-video test accuracy | 95.7 % | **95.9 %** |
+| real-video test accuracy | 95.7 % | **95.9 %** |
 | expected calibration error (real, calibrated) | 0.015 | **0.011** |
-| **cross-source** accuracy on ISL_DATA | 64.0 % | **70.0 %** |
+| **cross-dataset** accuracy on Static Dataset B | 64.0 % | **70.0 %** |
 
-The cross-source gain (+6 points) decided it: **the app's static classifier is the recovery model** (`checkpoints/dh_gat_v2_main_r.pt`) and the static tracker runs with recovery on (`HandTracker(recover=True)`). Checkpoint names ending in `_r` select this automatically. The continuous model keeps the plain tracker, because its features were computed without recovery.
+The cross-dataset gain (+6 points) was decisive: **the application's static classifier is the recovery model** (`checkpoints/dh_gat_v2_main_r.pt`) and the static tracker runs with recovery on (`HandTracker(recover=True)`). Checkpoint names ending in `_r` select this automatically. The continuous model keeps the plain tracker, because its features were computed without recovery.
 
-One side effect is worth knowing: recovery sometimes adds a *spurious* second hand to one-handed letters (about 18 % for O). The classifier tolerates it, and the hold detector ignores the brief prediction flicker it can cause (see [Hold detection](hold-detection)).
+A side effect is that recovery sometimes adds a *spurious* second hand to one-handed letters (about 18 % for O). The classifier tolerates it, and the hold detector ignores the brief prediction flicker it can cause (see [Hold detection](hold-detection)).
 
-## Tried and rejected: stronger augmentation
+## Effect of stronger augmentation
 
-The cross-source gap looked like a camera-viewpoint and depth problem (MediaPipe's depth estimate differs from camera to camera), so `train_v2.py --strong-aug` widened the 3D rotations (±35°), added random per-hand depth scaling (0.5 – 1.6×), larger per-hand rotation (±20°) and more hand dropout (8 %). Trained without ISL_DATA and tested on it, it did **worse**:
+The cross-dataset gap appeared to be a camera-viewpoint and depth problem (MediaPipe's depth estimate differs from camera to camera), so `train_v2.py --strong-aug` widened the 3D rotations (±35°), added random per-hand depth scaling (0.5 – 1.6×), larger per-hand rotation (±20°) and more hand dropout (8 %). Trained without Static Dataset B and tested on it, it performed **worse**:
 
-| | current recipe | strong augmentation |
+| | adopted recipe | strong augmentation |
 |---|---:|---:|
-| cross-source accuracy (ISL_DATA unseen) | **70.0 %** | 65.5 % |
-| real news-video test | **95.5 %** | 95.3 % |
+| cross-dataset accuracy (Static Dataset B unseen) | **70.0 %** | 65.5 % |
+| real-video test | **95.5 %** | 95.3 % |
 | original in-domain test | 97.8 % | 97.8 % |
 
-So distorting the geometry harder does not close the gap; it removes information the classifier relies on. The recipe was not adopted (the flag is kept so the experiment can be reproduced). What *did* help was fixing the input (second-hand recovery, +6 points). What is still likely to help most is data from the target camera: record your own signs with `src/static/collect_webcam_data.py` and fine-tune.
+Distorting the geometry more strongly therefore does not close the gap; it removes information the classifier relies on. The stronger recipe was not adopted (the flag is kept so that the experiment can be reproduced). Improving the input, through second-hand recovery, gave +6 points. Data from the target camera is expected to help most: recordings made with `src/static/collect_webcam_data.py` can be used for fine-tuning.
 

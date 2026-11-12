@@ -48,17 +48,15 @@ For an uploaded video:
 
 ## Live webcam
 
-`ContinuousSession` keeps a buffer of the features of the most recent frames (up to 12 s). Every third frame the sequence model re-decodes the whole buffer and the text on screen is `committed words + current hypothesis`. When the hands leave the picture for **1.2 s** the word is committed (with a trailing space) and the buffer is cleared. The current letter and its confidence come from the last decoded letter.
-
-Typical cost on a laptop CPU: MediaPipe 20 – 40 ms + trunk 5 ms + sequence model (≤ 360 frames, every third frame) ≈ 10 – 30 ms.
+In the application the continuous model runs as a streaming decoder: landmarks are resampled to 30 Hz, a sliding window is re-decoded every second frame, and letters are committed once they are 0.4 s old. The mechanism is described in [Live streaming](live-streaming). The server-side cost of one landmark packet (features and decoding) is about 5 ms; hand tracking itself runs in the browser.
 
 :::note No space symbol
-The dataset transcripts contain no spaces, so the model cannot emit them. Word breaks in live mode come from the pause rule above.
+Spaces are removed from the transcripts, so the model cannot emit them. Word breaks in live mode come from a pause rule: the word ends when the hands are out of view for about 1 s.
 :::
 
 ## Example
 
-Held-out test videos (names spelled by an interpreter):
+Held-out test videos (transcriptions of the spelled names):
 
 | Truth | Prediction |
 |---|---|

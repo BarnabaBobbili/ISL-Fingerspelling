@@ -45,8 +45,8 @@ def get(res, *keys):
 
 def static_table():
     v1 = load("benchmark_dh_gat_static_best.json")
-    runs = [("DH-GAT v1 (original)", v1, None)]
-    for tag, label in (("main", "DH-GAT v2"), ("main_r", "DH-GAT v2 + second-hand recovery")):
+    runs = [("Baseline (per-hand normalisation)", v1, None)]
+    for tag, label in (("main", "Shared-frame DH-GAT"), ("main_r", "Shared-frame DH-GAT + second-hand recovery (proposed)")):
         runs.append((label, load(f"benchmark_dh_gat_v2_{tag}.json"), tag))
     rows = []
     for label, res, tag in runs:
@@ -62,7 +62,7 @@ def static_table():
             real = get(res, "real (test videos)")
             cal = get(res, "real (test videos) +calib")
             rows.append((label, ind["acc"], real["acc"], real["ece"], cal["ece"], tag))
-    out = ["| Model | In-domain (orig. split) | **Real news-video test** | ECE uncalibrated | ECE calibrated |",
+    out = ["| Model | In-domain (orig. split) | **Real-video test** | ECE uncalibrated | ECE calibrated |",
            "|---|---:|---:|---:|---:|"]
     for label, ind, real, e0, e1, _ in rows:
         out.append(f"| {label} | {pct(ind, 2)} | **{pct(real, 2)}** | {e0:.3f} | {'—' if e1 is None else f'{e1:.3f}'} |")
@@ -70,10 +70,10 @@ def static_table():
 
 
 def cross_table():
-    out = ["| Model (trained **without** ISL_DATA) | ISL_DATA accuracy | …with both hands detected | …with one hand detected | ECE (calibrated) |",
+    out = ["| Model (trained **without** Static Dataset B) | Static Dataset B accuracy | …with both hands detected | …with one hand detected | ECE (calibrated) |",
            "|---|---:|---:|---:|---:|"]
     vals = {}
-    for tag, label in (("xsrc", "DH-GAT v2"), ("xsrc_r", "DH-GAT v2 + second-hand recovery")):
+    for tag, label in (("xsrc", "Shared-frame DH-GAT"), ("xsrc_r", "Shared-frame DH-GAT + second-hand recovery (proposed)")):
         res = load(f"benchmark_dh_gat_v2_{tag}.json")
         h = get(res, "holdout source (cross-source)")
         hc = get(res, "holdout source (cross-source) +calib")
@@ -86,13 +86,13 @@ def cross_table():
 
 
 def cont_table():
-    rows = [("BiLSTM-CTC v1 (63-d landmarks, one hand)", "—", 0.1424, 0.1475),
-            ("Conformer-CTC v1 (63-d landmarks, one hand)", "—", 0.1872, 0.1926)]
+    rows = [("BiLSTM-CTC, baseline (63-d landmarks, one hand)", "—", 0.1424, 0.1475),
+            ("Conformer-CTC, baseline (63-d landmarks, one hand)", "—", 0.1872, 0.1926)]
     for f in sorted(R.glob("cont_v2_*.json")):
         r = json.loads(f.read_text())
-        name = f"{'Conformer' if r['kind'] == 'conformer' else 'BiLSTM'}-CTC v2" + (" — features: all (351-d)" if r["parts"] == "all" else " — ablation: raw geometry + motion only (133-d)")
+        name = f"{'Conformer' if r['kind'] == 'conformer' else 'BiLSTM'}-CTC" + (" — features: all (351-d)" if r["parts"] == "all" else " — ablation: raw geometry + motion only (133-d)")
         if r["tag"].endswith("_stream"):
-            name += " + streaming training (deployed)"
+            name += " + streaming training (proposed)"
         rows.append((name, f"{r['params']:,}", r["val_cer"], r["test_cer"]))
     out = ["| Model | Parameters | Validation CER | **Test CER** |", "|---|---:|---:|---:|"]
     for n, p, v, t in rows:
@@ -104,7 +104,7 @@ def streaming_table(tag, base):
     cur, old = load(f"streaming_{tag}.json"), load(f"streaming_{base}.json") if base else None
     if cur is None:
         return "", False
-    head = ["| Condition | Previous model (live) | Whole clip | **Live decoder** | Letter delay (median) |", "|---|---:|---:|---:|---:|"]
+    head = ["| Condition | Without streaming training (live) | Whole clip | **Live decoder** | Letter delay (median) |", "|---|---:|---:|---:|---:|"]
     for k, v in cur["conditions"].items():
         b = f"{100 * old['conditions'][k]['stream_cer']:.2f} %" if old else "—"
         head.append(f"| {k} | {b} | {pct(v['whole_cer'], 2)} | **{pct(v['stream_cer'], 2)}** | {v['latency_median_s']:.2f} s |")
@@ -139,14 +139,14 @@ def main():
     av_tab, av = avatar_table()
 
     best_static = next(r for r in st_rows if r[5] == a.static_default)
-    cont_v2 = [r for r in ct_rows if "v2" in r[0] and "features: all" in r[0]]
-    best_cont = next((r for r in cont_v2 if "(deployed)" in r[0]), None) if a.cont_best else None
+    cont_v2 = [r for r in ct_rows if "baseline" not in r[0] and "features: all" in r[0]]
+    best_cont = next((r for r in cont_v2 if "(proposed)" in r[0]), None) if a.cont_best else None
     best_cont = best_cont or (min(cont_v2, key=lambda r: r[2]) if cont_v2 else None)
     st_tab_live, has_live = streaming_table(a.streaming, a.streaming_base) if a.streaming else ("", False)
 
     def cer_of(kind, parts):
         for r in ct_rows:
-            if ("Conformer" if kind == "conformer" else "BiLSTM") in r[0] and "v2" in r[0] and (("features: all" in r[0]) == (parts == "all")):
+            if ("Conformer" if kind == "conformer" else "BiLSTM") in r[0] and "baseline" not in r[0] and (("features: all" in r[0]) == (parts == "all")):
                 return r[3]
         return None
     parts_txt = []
@@ -162,7 +162,7 @@ The live recogniser (30 Hz resampling, sliding window, stable-prefix commit) rep
 
 {st_tab_live}
 
-*Faster signing time-compresses the hand track; slower cameras drop frames and keep true timestamps. A letter is final about 0.4 s after it was signed. The previous model is the one trained without the streaming augmentations.*
+*Faster signing time-compresses the hand track; slower cameras drop frames and keep true timestamps. A letter is final about 0.4 s after it was signed. “Without streaming training” is the same model trained without the streaming augmentations.*
 
 """ if has_live else "")
 
@@ -178,13 +178,13 @@ All numbers are produced by scripts in the repository and written into this page
 
 ## Static letters
 
-Three tests are always reported together (see [design decision DD-008](../reference/design-decisions)):
+Three tests are reported together (see [design decision DD-008](../reference/design-decisions)):
 
 | Test | What it measures |
 |---|---|
 | **In-domain** | the original random split of ≈ 45 k images (near-duplicate frames: optimistic) |
-| **Real news video** | 1,069 letter frames CTC-aligned from **held-out test videos** (small hands, full-body shot) |
-| **Cross-source** | train *without* ISL_DATA, test on all 13,061 of its images (new camera, background, signer) |
+| **Real-video frames** | 1,069 letter frames CTC-aligned from **held-out test videos** of the Continuous Fingerspelling Dataset |
+| **Cross-dataset** | trained *without* Static Dataset B and tested on all 13,061 of its images (different camera and background) |
 
 ### In-domain and real-video
 
@@ -192,11 +192,11 @@ Three tests are always reported together (see [design decision DD-008](../refere
 
 *ECE = expected calibration error (10 bins); lower is better. "Calibrated" uses the temperature fitted on the real-video validation logits.*
 
-### Cross-source (the realistic test for a new camera)
+### Cross-dataset (approximating a new camera)
 
 {cr_tab}
 
-Accuracy is far lower than on the real news videos because ISL_DATA is shot close-up from below with overlapping hands, which also makes MediaPipe miss the second hand. The columns show how strongly accuracy depends on both hands being detected.
+Accuracy is lower than on the real-video frames because Static Dataset B is shot close-up from below with overlapping hands, which also causes MediaPipe to miss the second hand. The columns show how strongly accuracy depends on both hands being detected.
 
 ## Continuous fingerspelling
 
@@ -204,12 +204,12 @@ Character error rate (CER = edit distance / reference length, corpus level, gree
 
 {ct_tab}
 
-- The **v1** Conformer was *worse* than the v1 BiLSTM. The v2 features (pretrained hand-shape embedding + both hands + motion), augmentation, a smaller convolution kernel and the intermediate CTC loss turn this around.
+- The baseline Conformer was *worse* than the baseline BiLSTM. The proposed input features (pretrained hand-shape embedding, both hands and motion), the augmentation, a smaller convolution kernel and the intermediate CTC loss reverse this ordering.
 - The **ablation** rows use no trunk/posterior features at all, so the difference to the "all features" rows is what the pretrained DH-GAT contributes: **{abl}**.
 - Without the pretrained features the Conformer is *not* better than the BiLSTM — consistent with Conformers needing more data than the ≈ 70 minutes available. The pretrained hand-shape embedding supplies the missing prior, which is why the Conformer becomes the best model only with it.
 - Validation CER selects the model; the test set is used once.
 
-{live_section}## Avatar contact alignment
+{live_section}## Contact alignment of the 3D hands
 
 Mean absolute contact gap in hand sizes (1 hand size ≈ 9.5 cm; 0 = skin on skin).
 
@@ -220,8 +220,8 @@ Over the {av[0]} letters that have contacts, the mean gap falls from **{av[1]:.3
 ## Reproducing
 
 ```bash
-python src/static/benchmark.py                 # legacy v1 on all protocols
-python src/static/train_v2.py --tag main       # prints the v2 table
+python src/static/benchmark.py                 # baseline model on all protocols
+python src/static/train_v2.py --tag main       # trains the DH-GAT and prints its table
 python src/training/select_best_cont.py        # continuous comparison
 python src/evaluation/make_benchmark_doc.py    # regenerate this page
 ```
@@ -230,12 +230,12 @@ python src/evaluation/make_benchmark_doc.py    # regenerate this page
 
     glance = f"""| Task | Test | Result |
 |---|---|---|
-| Static letters (DH-GAT v2) | real news-video letters, held-out videos | **{pct(best_static[2], 1)}** (v1: {pct(st_rows[0][2], 1)}) |
+| Static letters (DH-GAT) | real-video frames, held-out videos | **{pct(best_static[2], 1)}** (baseline: {pct(st_rows[0][2], 1)}) |
 | Static letters | original in-domain split | **{pct(best_static[1], 1)}** |
-| Static letters | cross-source (ISL_DATA never seen) | **{pct(cr_vals.get('xsrc_r' if a.static_default == 'main_r' else 'xsrc', 0), 1)}** |
-| Calibration | expected calibration error on real videos | **{best_static[4] if best_static[4] is not None else best_static[3]:.3f}** (v1: {st_rows[0][3]:.3f}) |
-| Continuous (Conformer-CTC v2) | character error rate, test videos | **{pct(best_cont[3], 2) if best_cont else 'n/a'}** (v1 BiLSTM: 14.75 %) |
-| Avatar contact alignment | mean contact gap | **{av[1]:.3f} → {av[2]:.3f}** hand sizes |
+| Static letters | cross-dataset (Static Dataset B never seen) | **{pct(cr_vals.get('xsrc_r' if a.static_default == 'main_r' else 'xsrc', 0), 1)}** |
+| Calibration | expected calibration error on real-video frames | **{best_static[4] if best_static[4] is not None else best_static[3]:.3f}** (baseline: {st_rows[0][3]:.3f}) |
+| Continuous (Conformer-CTC) | character error rate, test videos | **{pct(best_cont[3], 2) if best_cont else 'n/a'}** (baseline BiLSTM: 14.75 %) |
+| Contact alignment of the 3D hands | mean contact gap | **{av[1]:.3f} → {av[2]:.3f}** hand sizes |
 """
     (DOCS / "_results_glance.md").write_text(glance, encoding="utf-8")
 

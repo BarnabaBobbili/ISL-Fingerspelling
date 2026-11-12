@@ -11,15 +11,15 @@ ISL-Fingerspelling/
 │   ├── server.py                Starlette back end (WebSocket + upload API)
 │   └── static/                  index.html, css/, js/ (app, live, hud, avatar), data/poses.json, vendor/ (Three.js)
 ├── src/
-│   ├── models/                  dh_gat.py (v1), dh_gat_v2.py, bilstm_ctc.py, conformer_ctc.py, cont_v2.py, …
-│   ├── static/                  extract_v2.py, train_v2.py, benchmark.py, webcam/data tools (v1 era)
+│   ├── models/                  dh_gat.py (baseline), dh_gat_v2.py, bilstm_ctc.py, conformer_ctc.py (baselines), cont_v2.py, …
+│   ├── static/                  extract_v2.py, train_v2.py, benchmark.py, webcam and data tools
 │   ├── extraction/              landmark_extractor.py, align_real_frames.py, extract_continuous_v2.py
 │   ├── pipeline/                hands, classifier, hold, features, continuous, video, overlay, ctc, cli
 │   ├── avatar/                  touch.py (geometry), build_poses.py
-│   ├── training/                config.py, train.py (v1), build_cont_features.py, train_cont_v2.py, select_best_cont.py
-│   ├── preprocessing/           normalizer.py, feature_engineer.py (v1 features)
+│   ├── training/                config.py, train.py (baseline), build_cont_features.py, train_cont_v2.py, select_best_cont.py
+│   ├── preprocessing/           normalizer.py, feature_engineer.py (baseline features)
 │   ├── evaluation/              metrics, decoder, confusion analysis, baselines
-│   └── data/                    dataset_loader.py, split_manager.py (v1 continuous data)
+│   └── data/                    dataset_loader.py, split_manager.py (continuous data loading)
 ├── tests/                       synthetic-video pipeline test, geometry tests
 ├── checkpoints/                 trained weights (the small ones are committed)
 ├── docs-site/                   this documentation (Docusaurus)
@@ -29,11 +29,11 @@ ISL-Fingerspelling/
 
 Not in the repository (listed in `.gitignore`): `data/` (datasets), `cache/` (landmark caches), `logs/`, `results/`.
 
-## Two generations of code
+## Baseline and proposed modules
 
-The project started with a first generation (v1) — per-hand-normalised DH-GAT and landmark-only BiLSTM/Conformer. The `v2` modules replace them for the app, but v1 is kept because the evaluation compares against it:
+The repository keeps the baseline implementations (a per-hand-normalised DH-GAT and landmark-only BiLSTM/Conformer models) because the evaluation compares against them. The application uses the proposed modules:
 
-| | v1 | v2 |
+| | Baseline | Proposed |
 |---|---|---|
 | Static model | `models/dh_gat.py`, `static/train_static.py` | `models/dh_gat_v2.py`, `static/train_v2.py` |
 | Static cache | `cache/static/*.npz` (wrist-normalised) | `cache/static_v2/*.npz` (raw two-hand coordinates) |

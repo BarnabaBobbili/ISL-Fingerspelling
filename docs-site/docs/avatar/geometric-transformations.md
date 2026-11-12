@@ -59,12 +59,12 @@ Steps 2 and 3 run for up to four rounds and the round with the smallest mean `|g
 | | Value |
 |---|---:|
 | letters with contacts | 17 of 20 two-handed (J, Q, S have no reliable contact) |
-| mean absolute gap, raw | **0.226** hand sizes ≈ 2.1 cm |
-| mean absolute gap, after alignment | **0.018** hand sizes ≈ 1.7 mm |
-| worst letters after alignment | 0.047 (P), 0.032 (N) |
+| mean absolute gap, raw | **0.214** hand sizes ≈ 2.0 cm |
+| mean absolute gap, after alignment | **0.017** hand sizes ≈ 1.6 mm |
+| largest remaining gaps | 0.046 (P), 0.033 (N) |
 
 Examples: A 0.57 → 0.004 · G 0.33 → 0.017 · R 0.12 → 0.021 · K 0.25 → 0.020 · W 0.37 → 0.022.
 
 ## In the browser
 
-The same positions are stored in `poses.json` (`raw` and `touched`). The **Contact alignment** switch on the avatar page toggles between them, and **Show contact markers** draws the aligned contact points while a letter is held. During transitions the app blends joint positions and then re-projects every bone to its length (forward kinematics), so fingers never shrink or stretch between letters.
+The same positions are stored in `poses.json` (`raw` and `touched`). The **Bring touching joints together** switch on the Sign page toggles between them, and **Mark the contact points** draws the aligned contact points while a letter is held. During transitions the app blends joint positions and then re-projects every bone to its length (forward kinematics), so fingers never shrink or stretch between letters.

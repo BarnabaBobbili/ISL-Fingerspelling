@@ -284,7 +284,7 @@ async def info(request: Request):
         "name": "ISL Fingerspelling",
         "characters": [chr(65 + i) for i in range(26)],
         "one_handed": list("CILOUV"),
-        "static_model": "DH-GAT v2",
+        "static_model": "DH-GAT",
         "static_recover": bool(getattr(Engine.clf, "recover", False)),
         "continuous_model": getattr(Engine.cont, "name", None) if cont else None,
         "continuous_available": cont or (ROOT / "checkpoints" / "cont_best.pt").exists(),

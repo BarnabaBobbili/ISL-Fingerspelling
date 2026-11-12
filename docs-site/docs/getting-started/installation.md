@@ -37,10 +37,10 @@ The repository ships the trained weights needed to run the app:
 | File | Size | Purpose |
 |---|---|---|
 | `hand_landmarker.task` | 7.8 MB | MediaPipe hand landmark model |
-| `checkpoints/dh_gat_v2_main.pt` | ≈ 2 MB | static letter classifier (DH-GAT v2) |
+| `checkpoints/dh_gat_v2_main.pt` | ≈ 2 MB | static letter classifier (DH-GAT) |
 | `checkpoints/cont_best.pt` | few MB | continuous (CTC) model |
 
-The **datasets are not in the repository** (they are large). You only need them to retrain — see [Commands](../reference/commands).
+The **datasets are not in the repository** because of their size. They are required only for retraining; see [Commands](../reference/commands).
 
 ## Verify the installation
 

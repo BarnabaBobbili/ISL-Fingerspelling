@@ -49,7 +49,7 @@ function toggleRecord() {
     recorder = new MediaRecorder($('av-canvas').captureStream(30), { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm' });
     recorder.ondataavailable = e => e.data.size && chunks.push(e.data);
     recorder.onstop = () => {
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })); a.download = 'varna-sign.webm'; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })); a.download = 'isl-fingerspelling-sign.webm'; a.click();
         b.classList.remove('rec'); b.innerHTML = icon('record') + 'Record a clip';
     };
     recorder.start(); b.classList.add('rec'); b.innerHTML = icon('stop') + 'Stop and save';

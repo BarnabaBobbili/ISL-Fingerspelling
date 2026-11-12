@@ -2,7 +2,7 @@
 import { $ } from '/static/js/ui.js';
 import { Avatar } from '/static/js/avatar.js';
 
-const WORDS = ['NAMASTE', 'INDIA', 'VARNA', 'WELCOME', 'THANK YOU'];
+const WORDS = ['NAMASTE', 'INDIA', 'SIGN', 'WELCOME', 'THANK YOU'];
 let av = null, running = false, i = 0, factsDone = false;
 
 function wordHtml(w, idx = -1) {

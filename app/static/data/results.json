@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-12",
+ "generated": "2026-11-13",
  "headline": {
   "real_acc": 95.9,
   "cer": 3.6
@@ -7,21 +7,21 @@
  "static": {
   "rows": [
    {
-    "name": "DH-GAT v1 (original)",
+    "name": "Baseline (per-hand normalisation)",
     "in_domain": 98.23018699910952,
     "real": 38.353601496725915,
     "ece": 0.17034958321792817,
     "ece_cal": null
    },
    {
-    "name": "DH-GAT v2",
+    "name": "Shared-frame DH-GAT",
     "in_domain": 97.98530721282279,
     "real": 95.69691300280635,
     "ece": 0.028445791289335776,
     "ece_cal": 0.015058166268164032
    },
    {
-    "name": "DH-GAT v2 + second-hand recovery",
+    "name": "Shared-frame DH-GAT + second-hand recovery (proposed)",
     "in_domain": 98.04096170970614,
     "real": 95.88400374181478,
     "ece": 0.023477632465264433,
@@ -32,14 +32,14 @@
  },
  "cross": [
   {
-   "name": "DH-GAT v2",
+   "name": "Shared-frame DH-GAT",
    "acc": 64.0073501263303,
    "both": 76.55269761606023,
    "one": 53.399846508058324,
    "ece": 0.18147354001710853
   },
   {
-   "name": "DH-GAT v2 + second-hand recovery",
+   "name": "Shared-frame DH-GAT + second-hand recovery (proposed)",
    "acc": 70.03292244085445,
    "both": 72.92983395822175,
    "one": 65.77615298087738,
@@ -49,47 +49,47 @@
  "continuous": {
   "rows": [
    {
-    "name": "BiLSTM-CTC v1 (one hand, landmarks only)",
+    "name": "BiLSTM-CTC, baseline (one hand, landmarks only)",
     "params": "\u2014",
     "val": 14.24,
     "test": 14.75
    },
    {
-    "name": "Conformer-CTC v1 (one hand, landmarks only)",
+    "name": "Conformer-CTC, baseline (one hand, landmarks only)",
     "params": "\u2014",
     "val": 18.72,
     "test": 19.26
    },
    {
-    "name": "BiLSTM-CTC v2",
+    "name": "BiLSTM-CTC",
     "params": "1,469,049",
     "val": 6.301369863013699,
     "test": 4.281060958585389,
     "tag": "bilstm_all"
    },
    {
-    "name": "BiLSTM-CTC v2 (no pretrained features)",
+    "name": "BiLSTM-CTC (no pretrained features)",
     "params": "1,437,221",
     "val": 6.8493150684931505,
     "test": 5.118659841786878,
     "tag": "bilstm_raw"
    },
    {
-    "name": "Conformer-CTC v2",
+    "name": "Conformer-CTC",
     "params": "2,569,140",
     "val": 5.7534246575342465,
     "test": 3.908794788273615,
     "tag": "conformer_all"
    },
    {
-    "name": "Conformer-CTC v2 (no pretrained features)",
+    "name": "Conformer-CTC (no pretrained features)",
     "params": "2,537,312",
     "val": 7.671232876712329,
     "test": 5.909725453699395,
     "tag": "conformer_raw"
    },
    {
-    "name": "Conformer-CTC v2 + streaming training",
+    "name": "Conformer-CTC + streaming training (proposed)",
     "params": "2,569,140",
     "val": 5.93607305936073,
     "test": 3.6295951605397856,
@@ -145,7 +145,7 @@
  },
  "avatar": {
   "letters": 17,
-  "raw": 0.2255,
-  "touched": 0.017682352941176472
+  "raw": 0.21431764705882353,
+  "touched": 0.01723529411764706
  }
 }

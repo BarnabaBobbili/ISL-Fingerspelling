@@ -3,7 +3,7 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Varna — documentation',
+  title: 'ISL fingerspelling — documentation',
   tagline: 'Recognition and 3D synthesis of Indian Sign Language fingerspelling',
   favicon: 'img/favicon.svg',
 
@@ -41,8 +41,8 @@ const config = {
     ({
       colorMode: {defaultMode: 'light', respectPrefersColorScheme: true},
       navbar: {
-        title: 'Varna',
-        logo: {alt: 'Varna', src: 'img/logo.svg'},
+        title: 'ISL fingerspelling',
+        logo: {alt: 'ISL fingerspelling', src: 'img/logo.svg'},
         items: [
           {type: 'docSidebar', sidebarId: 'manual', position: 'left', label: 'Manual'},
           {href: process.env.DOCS_EMBED ? '/' : 'http://127.0.0.1:8000/', label: 'Open the app', position: 'right', target: '_top'},

@@ -1,7 +1,7 @@
 /* App shell: hash router, theme toggle, mobile menu, server status. Views are loaded lazily. */
 import { $, $$, hydrateIcons, icon, setTheme, currentTheme } from '/static/js/ui.js';
 
-const TITLES = { home: 'Varna — Indian Sign Language fingerspelling', recognise: 'Recognise · Varna', sign: 'Sign · Varna', alphabet: 'Alphabet · Varna', results: 'Results · Varna', docs: 'Documentation · Varna' };
+const TITLES = { home: 'ISL fingerspelling — recognition and generation', recognise: 'Recognise · ISL fingerspelling', sign: 'Sign · ISL fingerspelling', alphabet: 'Alphabet · ISL fingerspelling', results: 'Results · ISL fingerspelling', docs: 'Documentation · ISL fingerspelling' };
 const modules = {};
 let active = null;
 
