@@ -1,164 +1,286 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>ISL Fingerspelling Studio</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%279%27 fill=%27%235eead4%27/%3E%3Cpath d=%27M10 22V12m4 10V9m4 13V11m4 11v-6%27 stroke=%27%230b1020%27 stroke-width=%272.6%27 stroke-linecap=%27round%27/%3E%3C/svg%3E">
-<link rel="stylesheet" href="/static/css/style.css">
+<title>Varna — Indian Sign Language fingerspelling</title>
+<meta name="description" content="Read and sign Indian Sign Language fingerspelling in the browser: live camera recognition, video analysis and a 3D signer.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230e5a5f'/%3E%3Cpath d='M9 23 16 8l7 15M11.5 18h9' stroke='%23fcf9f1' stroke-width='2.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  /* apply the saved / preferred theme before first paint (no flash) */
+  (function () { var t; try { t = localStorage.getItem('theme'); } catch (e) {}
+    if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t); })();
+</script>
+<link rel="preload" href="/static/fonts/fraunces-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/instrument-sans-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/static/css/tokens.css">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/css/views.css">
 <script type="importmap">{"imports": {"three": "/static/vendor/three.module.min.js"}}</script>
 </head>
 <body>
-<header class="top">
-  <div class="brand">
-    <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5eead4"/><stop offset="1" stop-color="#818cf8"/></linearGradient></defs><rect x="1" y="1" width="30" height="30" rx="9" fill="url(#g)"/><path d="M10 22V12m4 10V9m4 13V11m4 11v-6" stroke="#0b1020" stroke-width="2.6" stroke-linecap="round"/></svg>
-    <div><b>ISL Fingerspelling Studio</b><span>Indian Sign Language &middot; recognition &amp; synthesis</span></div>
+<a class="skip" href="#view">Skip to content</a>
+
+<header class="site-header">
+  <div class="bar">
+    <a class="brand" href="#/" aria-label="Varna, home"><b>Varna</b><span>ISL fingerspelling</span></a>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a href="#/recognise" data-route="recognise">Recognise</a>
+      <a href="#/sign" data-route="sign">Sign</a>
+      <a href="#/alphabet" data-route="alphabet">Alphabet</a>
+      <a href="#/results" data-route="results">Results</a>
+      <a href="#/docs" data-route="docs">Docs</a>
+    </nav>
+    <div class="spacer"></div>
+    <div class="status" id="status" role="status"><i class="dot"></i><span>starting…</span></div>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="Switch colour theme"><i data-icon="moon"></i></button>
+    <button class="icon-btn menu-btn" id="menu-btn" type="button" aria-label="Menu" aria-expanded="false" aria-controls="nav"><i data-icon="menu"></i></button>
   </div>
-  <nav class="tabs" role="tablist">
-    <button class="tab active" data-tab="live" role="tab">Live webcam</button>
-    <button class="tab" data-tab="upload" role="tab">Upload video</button>
-    <button class="tab" data-tab="sign" role="tab">Text &rarr; Sign</button>
-    <button class="tab" data-tab="alpha" role="tab">Alphabet</button>
-  </nav>
-  <div class="status" id="status"><i class="dot"></i><span>connecting&hellip;</span></div>
 </header>
 
-<main>
-<!-- ───────────── LIVE ───────────── -->
-<section id="tab-live" class="panel active">
-  <div class="grid">
-    <div class="stagewrap">
-      <canvas id="live-stage" width="960" height="540"></canvas>
-      <div class="overlay-msg" id="live-msg">Press <b>Start camera</b> to begin</div>
+<main id="view" tabindex="-1">
+
+<!-- ===================================================== HOME -->
+<section class="view" data-view="home">
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <span class="eyebrow">Indian Sign Language</span>
+        <h1>Fingerspelling, <em>read</em> and signed.</h1>
+        <p class="lead">Point a camera at someone spelling a name and watch the letters appear. Or type a word and watch a signer spell it out. Everything runs on your own machine.</p>
+        <div class="btn-row">
+          <a class="btn primary" href="#/recognise"><i data-icon="camera"></i>Open the camera</a>
+          <a class="btn" href="#/sign"><i data-icon="hand"></i>Try the signer</a>
+        </div>
+      </div>
+      <div>
+        <div class="stage"><canvas id="hero-canvas" aria-label="3D signer spelling words"></canvas></div>
+        <div class="hero-caption"><span>signing <b id="hero-word">NAMASTE</b></span><a class="link-arrow" href="#/sign">Sign your own text</a></div>
+      </div>
     </div>
-    <aside class="side">
-      <div class="card">
-        <h3>Controls</h3>
-        <div class="row">
-          <button class="btn primary" id="live-start">Start camera</button>
-          <button class="btn" id="live-stop" disabled>Stop</button>
-        </div>
-        <label class="field">Recognition mode
-          <select id="live-mode">
-            <option value="static">Static letters (hold each sign)</option>
-            <option value="continuous">Continuous fingerspelling</option>
-          </select>
-        </label>
-        <label class="check"><input type="checkbox" id="live-mirror" checked> Mirror preview</label>
-        <label class="check"><input type="checkbox" id="live-skel" checked> Show hand skeleton</label>
-        <p class="hint" id="live-hint">Hold a letter still for about a third of a second to type it. Remove your hands for a moment to start a new word.</p>
+
+    <div class="facts" id="home-facts" aria-label="Headline results">
+      <div class="fact"><div class="n">95.9<small>%</small></div><p>letters recognised on held-out news video</p></div>
+      <div class="fact"><div class="n">3.9<small>%</small></div><p>character error rate spelling unseen names</p></div>
+      <div class="fact"><div class="n">0<small> frames</small></div><p>uploaded: hand tracking runs in your browser</p></div>
+      <div class="fact"><div class="n">26</div><p>letters, 20 of them signed with two hands</p></div>
+    </div>
+
+    <div class="section">
+      <h2>Three ways in</h2>
+      <div class="entry-grid">
+        <a class="entry" href="#/recognise"><i data-icon="camera" data-size="30" class="glyph"></i><h3>Read signs</h3><p>Live from a webcam or from a video file. Letters, a confidence score and key frames, drawn on the picture.</p><span class="link-arrow">Recognise</span></a>
+        <a class="entry" href="#/sign"><i data-icon="hand" data-size="30" class="glyph"></i><h3>Sign text</h3><p>A 3D signer spells what you type or dictate, with the joints that touch brought together.</p><span class="link-arrow">Sign</span></a>
+        <a class="entry" href="#/alphabet"><i data-icon="alpha" data-size="30" class="glyph"></i><h3>Learn the alphabet</h3><p>All 26 letters, which use one hand and which use two, and where the hands meet.</p><span class="link-arrow">Alphabet</span></a>
       </div>
-      <div class="card">
-        <h3>Recognised text</h3>
-        <div class="textout" id="live-text">&nbsp;</div>
-        <div class="row wrap">
-          <button class="btn" id="live-speak">&#128266; Speak</button>
-          <button class="btn" id="live-copy">Copy</button>
-          <button class="btn" id="live-space">Space</button>
-          <button class="btn" id="live-back">&#9003;</button>
-          <button class="btn danger" id="live-clear">Clear</button>
-        </div>
-        <div class="metrics"><span>FPS <b id="m-fps">–</b></span><span>latency <b id="m-ms">–</b> ms</span><span>hands <b id="m-hands">0</b></span></div>
+    </div>
+
+    <div class="section">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div class="step"><h3>Track the hands</h3><p>MediaPipe finds both hands and 21 joints on each, 30 times a second, right in the browser.</p></div>
+        <div class="step"><h3>Understand the shape</h3><p>A graph-attention network looks at both hands together, so “fingertip on the other palm” is something it can actually see.</p></div>
+        <div class="step"><h3>Spell the word</h3><p>A Conformer sequence model turns the stream of hand shapes into letters, even when they run together.</p></div>
       </div>
-    </aside>
+    </div>
+
+    <div class="section">
+      <p class="note">Accuracy on your own camera will differ from the figures above. The <a href="#/results">results page</a> shows what was measured, including a test on a camera the model never saw, and where it falls short.</p>
+    </div>
   </div>
 </section>
 
-<!-- ───────────── UPLOAD ───────────── -->
-<section id="tab-upload" class="panel">
-  <div class="grid">
-    <div>
-      <div class="drop" id="drop">
-        <svg viewBox="0 0 24 24" width="38" height="38"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <p><b>Drop a video here</b> or click to choose<br><small>mp4, mov, avi, mkv, webm &middot; up to 300 MB</small></p>
-        <input type="file" id="file" accept="video/*" hidden>
-      </div>
-      <div class="stagewrap hidden" id="up-stagewrap">
-        <video id="up-video" playsinline controls muted></video>
-        <canvas id="up-canvas"></canvas>
-      </div>
-      <div class="card hidden" id="up-keyframes-card">
-        <h3>Extracted key frames <small>(one per recognised letter &mdash; click to jump)</small></h3>
-        <div class="strip" id="up-strip"></div>
-      </div>
+<!-- ===================================================== RECOGNISE -->
+<section class="view" data-view="recognise">
+  <div class="wrap tight">
+    <div class="page-head">
+      <span class="eyebrow">Sign → text</span>
+      <h1>Recognise</h1>
+      <p>Spell with a webcam or upload a video. The letter and how sure the model is are drawn on top of the picture.</p>
     </div>
-    <aside class="side">
-      <div class="card">
-        <h3>Analysis</h3>
-        <label class="field">Recognition mode
-          <select id="up-mode">
-            <option value="static">Static letters (held signs)</option>
-            <option value="continuous">Continuous fingerspelling</option>
-          </select>
-        </label>
-        <div class="progress hidden" id="up-progress"><i id="up-bar"></i><span id="up-ptext">queued</span></div>
-        <p class="hint" id="up-hint">Static mode finds moments where a sign is held still. Continuous mode reads flowing fingerspelling (names, words) with a CTC sequence model.</p>
+    <div class="tabs" role="tablist" aria-label="Source">
+      <button role="tab" id="tab-live" aria-selected="true" aria-controls="pane-live">Live camera</button>
+      <button role="tab" id="tab-upload" aria-selected="false" aria-controls="pane-upload">Video file</button>
+    </div>
+
+    <div id="pane-live" role="tabpanel" aria-labelledby="tab-live" class="split">
+      <div>
+        <div class="stage"><canvas id="live-stage" width="1280" height="720"></canvas><div class="overlay" id="live-msg"><span>Press <b>Start camera</b> to begin.<br><small style="color:inherit;opacity:.7">Frames never leave your computer.</small></span></div></div>
       </div>
-      <div class="card">
-        <h3>Result</h3>
-        <div class="textout" id="up-text">&nbsp;</div>
-        <div class="row wrap">
-          <button class="btn" id="up-speak">&#128266; Speak</button>
-          <button class="btn" id="up-copy">Copy</button>
-          <a class="btn hidden" id="up-dl" download>Annotated video</a>
-          <a class="btn hidden" id="up-json" download="result.json">JSON</a>
+      <aside class="stack">
+        <div class="panel">
+          <h3>Camera</h3>
+          <div class="btn-row" style="margin-bottom:var(--s-4)">
+            <button class="btn primary" id="live-start" type="button"><i data-icon="camera"></i>Start camera</button>
+            <button class="btn" id="live-stop" type="button" disabled><i data-icon="stop"></i>Stop</button>
+          </div>
+          <label class="field"><span>What are you signing?</span>
+            <select id="live-mode">
+              <option value="continuous">Flowing spelling (names, words)</option>
+              <option value="static">Single letters, held still</option>
+            </select>
+          </label>
+          <label class="check"><input type="checkbox" id="live-mirror" checked> Mirror the preview</label>
+          <label class="check"><input type="checkbox" id="live-skel" checked> Show tracked joints</label>
+          <p class="hint" id="live-hint">Spell at your normal pace and take your hands out of view for a moment between words.</p>
         </div>
-        <div class="metrics" id="up-meta"></div>
+        <div class="panel">
+          <h3>Text</h3>
+          <div class="readout empty" id="live-text">Nothing yet</div>
+          <div class="btn-row" style="margin-top:var(--s-3)">
+            <button class="btn sm" id="live-speak" type="button"><i data-icon="volume"></i>Speak</button>
+            <button class="btn sm" id="live-copy" type="button"><i data-icon="copy"></i>Copy</button>
+            <button class="btn sm" id="live-space" type="button" title="Insert a space"><i data-icon="space"></i></button>
+            <button class="btn sm" id="live-back" type="button" title="Delete last letter"><i data-icon="backspace"></i></button>
+            <button class="btn sm danger" id="live-clear" type="button"><i data-icon="trash"></i>Clear</button>
+          </div>
+          <div class="metrics"><span>fps <b id="m-fps">–</b></span><span>delay <b id="m-ms">–</b> ms</span><span>hands <b id="m-hands">0</b></span><span id="m-path"></span></div>
+        </div>
+      </aside>
+    </div>
+
+    <div id="pane-upload" role="tabpanel" aria-labelledby="tab-upload" class="split" hidden>
+      <div class="stack">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose a video file">
+          <i data-icon="upload" data-size="34"></i>
+          <p style="margin:0"><b>Drop a video here</b> or click to choose<br><small>mp4, mov, avi, mkv or webm · up to 300 MB</small></p>
+          <input type="file" id="file" accept="video/*" hidden>
+        </div>
+        <div class="stage" id="up-stagewrap" hidden><video id="up-video" playsinline controls muted></video><canvas id="up-canvas"></canvas></div>
+        <div class="panel" id="up-keyframes-card" hidden>
+          <h3>Key frames <span class="small" style="text-transform:none;letter-spacing:0;font-family:var(--font-ui)">— one per letter, click to jump</span></h3>
+          <div class="strip" id="up-strip"></div>
+        </div>
       </div>
-    </aside>
+      <aside class="stack">
+        <div class="panel">
+          <h3>Analysis</h3>
+          <label class="field"><span>Signing style</span>
+            <select id="up-mode">
+              <option value="continuous">Flowing spelling (names, words)</option>
+              <option value="static">Single letters, held still</option>
+            </select>
+          </label>
+          <div id="up-progress" hidden><div class="progress"><i id="up-bar"></i></div><div class="progress-label" id="up-ptext">queued</div></div>
+          <p class="hint" id="up-hint">Flowing mode reads names spelled without pauses. Held-letter mode finds the moments a sign is held still.</p>
+        </div>
+        <div class="panel">
+          <h3>Result</h3>
+          <div class="readout empty" id="up-text">No video yet</div>
+          <div class="btn-row" style="margin-top:var(--s-3)">
+            <button class="btn sm" id="up-speak" type="button"><i data-icon="volume"></i>Speak</button>
+            <button class="btn sm" id="up-copy" type="button"><i data-icon="copy"></i>Copy</button>
+            <a class="btn sm" id="up-dl" download hidden><i data-icon="download"></i>Annotated video</a>
+            <a class="btn sm" id="up-json" download="result.json" hidden><i data-icon="download"></i>JSON</a>
+          </div>
+          <div class="metrics" id="up-meta"></div>
+        </div>
+      </aside>
+    </div>
   </div>
 </section>
 
-<!-- ───────────── TEXT → SIGN ───────────── -->
-<section id="tab-sign" class="panel">
-  <div class="grid">
-    <div class="stagewrap avatarwrap">
-      <canvas id="av-canvas"></canvas>
-      <div class="av-hud">
-        <div class="av-letter" id="av-letter">&nbsp;</div>
-        <div class="av-word" id="av-word"></div>
-      </div>
-      <div class="av-tags"><span id="av-hands"></span><span id="av-contact"></span></div>
+<!-- ===================================================== SIGN -->
+<section class="view" data-view="sign">
+  <div class="wrap tight">
+    <div class="page-head">
+      <span class="eyebrow">Text → sign</span>
+      <h1>Sign</h1>
+      <p>Type or dictate a word and the signer spells it, letter by letter. Drag to look around.</p>
     </div>
-    <aside class="side">
-      <div class="card">
-        <h3>Text to sign</h3>
-        <textarea id="sg-text" rows="3" placeholder="Type a word or sentence (A–Z)…">HELLO INDIA</textarea>
-        <div class="row wrap">
-          <button class="btn primary" id="sg-play">&#9654; Sign it</button>
-          <button class="btn" id="sg-stop">&#9632; Stop</button>
-          <button class="btn" id="sg-mic" title="Dictate with your microphone">&#127908; Dictate</button>
+    <div class="split">
+      <div class="stage tall">
+        <canvas id="av-canvas" aria-label="3D signer"></canvas>
+        <div class="signer-hud"><div class="big" id="av-letter"></div><div class="word" id="av-word"></div></div>
+        <div class="stage-tags"><span id="av-hands"></span><span id="av-contact"></span></div>
+        <div class="view-switch"><div class="seg" role="group" aria-label="Camera"><button type="button" data-view-preset="front" aria-pressed="true">Front</button><button type="button" data-view-preset="hands" aria-pressed="false">Hands</button><button type="button" data-view-preset="signer" aria-pressed="false">Signer’s view</button></div></div>
+      </div>
+      <aside class="stack">
+        <div class="panel">
+          <h3>Text</h3>
+          <textarea id="sg-text" rows="3" placeholder="Type a word or sentence (A–Z)" aria-label="Text to sign">NAMASTE INDIA</textarea>
+          <div class="btn-row" style="margin-top:var(--s-3)">
+            <button class="btn primary" id="sg-play" type="button"><i data-icon="play"></i>Sign it</button>
+            <button class="btn" id="sg-stop" type="button"><i data-icon="stop"></i>Stop</button>
+            <button class="btn" id="sg-mic" type="button" title="Dictate with the microphone"><i data-icon="mic"></i>Dictate</button>
+          </div>
+          <div class="chips" id="sg-chips" aria-label="Letters"></div>
+          <label class="field"><span>Speed</span><input type="range" id="sg-speed" min="0.5" max="2" step="0.1" value="1"></label>
+          <label class="check"><input type="checkbox" id="sg-speak" checked> Say each letter aloud</label>
         </div>
-        <div class="chips" id="sg-chips"></div>
-        <label class="field">Speed <input type="range" id="sg-speed" min="0.5" max="2" step="0.1" value="1"></label>
-        <label class="check"><input type="checkbox" id="sg-speak" checked> Speak while signing</label>
-      </div>
-      <div class="card">
-        <h3>Geometry</h3>
-        <label class="check"><input type="checkbox" id="sg-touch" checked> Contact alignment (touching joints)</label>
-        <label class="check"><input type="checkbox" id="sg-markers" checked> Show contact markers</label>
-        <label class="check"><input type="checkbox" id="sg-skel"> Show skeleton</label>
-        <label class="field">Skin tone
-          <select id="sg-skin"><option value="medium">Medium</option><option value="light">Light</option><option value="deep">Deep</option></select>
-        </label>
-        <p class="hint">Drag to orbit, scroll to zoom. With <b>contact alignment</b> on, the joints that touch in a letter (e.g. fingertip on palm) are brought together with a rigid alignment plus finger inverse kinematics.</p>
-        <div class="row"><button class="btn" id="sg-rec">&#9210; Record clip</button></div>
-      </div>
-    </aside>
+        <div class="panel">
+          <h3>Appearance</h3>
+          <label class="check"><input type="checkbox" id="sg-touch" checked> Bring touching joints together</label>
+          <label class="check"><input type="checkbox" id="sg-markers" checked> Mark the contact points</label>
+          <label class="check"><input type="checkbox" id="sg-skel"> Show the joint skeleton</label>
+          <label class="field" style="margin-top:var(--s-3)"><span>Skin tone</span>
+            <select id="sg-skin"><option value="medium">Medium</option><option value="light">Light</option><option value="deep">Deep</option></select>
+          </label>
+          <button class="btn sm" id="sg-rec" type="button"><i data-icon="record"></i>Record a clip</button>
+          <p class="hint">With contact alignment on, joints that touch in a letter — a fingertip on a palm, say — are brought together using a rigid alignment and finger inverse kinematics.</p>
+        </div>
+      </aside>
+    </div>
   </div>
 </section>
 
-<!-- ───────────── ALPHABET ───────────── -->
-<section id="tab-alpha" class="panel">
-  <div class="card wide">
-    <h3>All 26 letters <small>&mdash; click a card to watch it on the avatar</small></h3>
+<!-- ===================================================== ALPHABET -->
+<section class="view" data-view="alphabet">
+  <div class="wrap tight">
+    <div class="page-head">
+      <span class="eyebrow">Reference</span>
+      <h1>Alphabet</h1>
+      <p>All 26 letters as the signer makes them. Six use one hand; twenty use two, and most of those are defined by where the hands touch.</p>
+    </div>
+    <div class="toolbar">
+      <div class="seg" id="alpha-filter" role="group" aria-label="Filter">
+        <button type="button" data-filter="all" aria-pressed="true">All 26</button>
+        <button type="button" data-filter="1" aria-pressed="false">One hand</button>
+        <button type="button" data-filter="2" aria-pressed="false">Two hands</button>
+      </div>
+      <span class="spacer"></span>
+      <span class="small" id="alpha-count"></span>
+    </div>
+    <div class="alpha-detail panel" id="alpha-detail" hidden>
+      <div class="stage" style="aspect-ratio:4/3"><canvas id="alpha-canvas" aria-label="Selected letter"></canvas></div>
+      <div>
+        <div class="letter" id="ad-letter">A</div>
+        <dl class="kv"><dt>Hands</dt><dd id="ad-hands"></dd><dt>Contacts</dt><dd id="ad-contacts"></dd><dt>Samples used</dt><dd id="ad-samples"></dd></dl>
+        <div class="btn-row"><button class="btn primary" id="ad-play" type="button"><i data-icon="play"></i>Sign it</button><button class="btn" id="ad-close" type="button">Close</button></div>
+      </div>
+    </div>
     <div class="alpha" id="alpha"></div>
   </div>
 </section>
+
+<!-- ===================================================== RESULTS -->
+<section class="view" data-view="results">
+  <div class="wrap tight">
+    <div class="page-head">
+      <span class="eyebrow">Measured, not claimed</span>
+      <h1>Results</h1>
+      <p>Every figure comes from a script in the repository. Three tests are always shown together, because the easy one flatters.</p>
+    </div>
+    <div id="results-body"><p class="small">Loading…</p></div>
+  </div>
+</section>
+
+<!-- ===================================================== DOCS -->
+<section class="view" data-view="docs">
+  <iframe class="docs-frame" id="docs-frame" title="Documentation" loading="lazy"></iframe>
+</section>
+
 </main>
 
-<footer>Static model: DH-GAT v2 &nbsp;|&nbsp; <span id="foot-cont">continuous model: …</span> &nbsp;|&nbsp; runs fully on your computer, nothing is uploaded to the internet.</footer>
+<footer class="site-footer" id="site-footer">
+  <div class="inner">
+    <span><b style="font-family:var(--font-display);font-size:1.1rem;color:var(--ink)">Varna</b> &nbsp;Indian Sign Language fingerspelling. Runs on your computer; nothing is sent to the internet.</span>
+    <span><a href="#/docs">Documentation</a> · <a href="#/results">Results</a> · <span id="foot-models"></span></span>
+  </div>
+</footer>
 
-<script type="module" src="/static/js/app.js"></script>
+<script type="module" src="/static/js/main.js"></script>
 </body>
 </html>

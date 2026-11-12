@@ -1,0 +1,151 @@
+{
+ "generated": "2026-11-12",
+ "headline": {
+  "real_acc": 95.9,
+  "cer": 3.6
+ },
+ "static": {
+  "rows": [
+   {
+    "name": "DH-GAT v1 (original)",
+    "in_domain": 98.23018699910952,
+    "real": 38.353601496725915,
+    "ece": 0.17034958321792817,
+    "ece_cal": null
+   },
+   {
+    "name": "DH-GAT v2",
+    "in_domain": 97.98530721282279,
+    "real": 95.69691300280635,
+    "ece": 0.028445791289335776,
+    "ece_cal": 0.015058166268164032
+   },
+   {
+    "name": "DH-GAT v2 + second-hand recovery",
+    "in_domain": 98.04096170970614,
+    "real": 95.88400374181478,
+    "ece": 0.023477632465264433,
+    "ece_cal": 0.01120588858067377
+   }
+  ],
+  "best": 2
+ },
+ "cross": [
+  {
+   "name": "DH-GAT v2",
+   "acc": 64.0073501263303,
+   "both": 76.55269761606023,
+   "one": 53.399846508058324,
+   "ece": 0.18147354001710853
+  },
+  {
+   "name": "DH-GAT v2 + second-hand recovery",
+   "acc": 70.03292244085445,
+   "both": 72.92983395822175,
+   "one": 65.77615298087738,
+   "ece": 0.1263093412876239
+  }
+ ],
+ "continuous": {
+  "rows": [
+   {
+    "name": "BiLSTM-CTC v1 (one hand, landmarks only)",
+    "params": "\u2014",
+    "val": 14.24,
+    "test": 14.75
+   },
+   {
+    "name": "Conformer-CTC v1 (one hand, landmarks only)",
+    "params": "\u2014",
+    "val": 18.72,
+    "test": 19.26
+   },
+   {
+    "name": "BiLSTM-CTC v2",
+    "params": "1,469,049",
+    "val": 6.301369863013699,
+    "test": 4.281060958585389,
+    "tag": "bilstm_all"
+   },
+   {
+    "name": "BiLSTM-CTC v2 (no pretrained features)",
+    "params": "1,437,221",
+    "val": 6.8493150684931505,
+    "test": 5.118659841786878,
+    "tag": "bilstm_raw"
+   },
+   {
+    "name": "Conformer-CTC v2",
+    "params": "2,569,140",
+    "val": 5.7534246575342465,
+    "test": 3.908794788273615,
+    "tag": "conformer_all"
+   },
+   {
+    "name": "Conformer-CTC v2 (no pretrained features)",
+    "params": "2,537,312",
+    "val": 7.671232876712329,
+    "test": 5.909725453699395,
+    "tag": "conformer_raw"
+   },
+   {
+    "name": "Conformer-CTC v2 + streaming training",
+    "params": "2,569,140",
+    "val": 5.93607305936073,
+    "test": 3.6295951605397856,
+    "tag": "conformer_stream"
+   }
+  ],
+  "best": 6
+ },
+ "streaming": {
+  "note": "Held-out test videos replayed through the live decoder. Signing speed is changed by time-compressing the hand track; slower cameras by dropping frames and keeping true timestamps. A letter is shown as final about 0.4 s after it was signed.",
+  "rows": [
+   {
+    "condition": "speed x1",
+    "whole": 3.955328059562587,
+    "stream": 3.7691949744067004,
+    "lat_median": 0.4,
+    "lat_p90": 0.43333333333333335,
+    "before": 4.5602605863192185
+   },
+   {
+    "condition": "speed x1.5",
+    "whole": 4.234527687296417,
+    "stream": 4.141461144718474,
+    "lat_median": 0.4,
+    "lat_p90": 0.43333333333333335,
+    "before": 5.816658911121452
+   },
+   {
+    "condition": "speed x2",
+    "whole": 5.7701256398324805,
+    "stream": 5.7701256398324805,
+    "lat_median": 0.4,
+    "lat_p90": 0.43333333333333335,
+    "before": 11.633317822242905
+   },
+   {
+    "condition": "camera 15 fps",
+    "whole": 5.304792926942764,
+    "stream": 4.327594229874361,
+    "lat_median": 0.4,
+    "lat_p90": 0.43333333333333335,
+    "before": 5.025593299208935
+   },
+   {
+    "condition": "camera 10 fps",
+    "whole": 13.21544904606794,
+    "stream": 5.677059097254538,
+    "lat_median": 0.43333333333333335,
+    "lat_p90": 0.4666666666666667,
+    "before": 6.375058166589111
+   }
+  ]
+ },
+ "avatar": {
+  "letters": 17,
+  "raw": 0.2255,
+  "touched": 0.017682352941176472
+ }
+}

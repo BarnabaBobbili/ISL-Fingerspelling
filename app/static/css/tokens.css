@@ -1,0 +1,79 @@
+/* Design tokens — Varna
+   Light is the default; [data-theme="dark"] is a full alternate theme.
+   One primary (peacock), one accent (marigold), warm neutrals. No gradients, no glows. */
+
+@font-face { font-family: "Fraunces"; src: url("/static/fonts/fraunces-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fraunces"; src: url("/static/fonts/fraunces-latin-wght-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("/static/fonts/instrument-sans-latin-wght-normal.woff2") format("woff2"); font-weight: 400 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/static/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("/static/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-style: normal; font-display: swap; }
+
+:root {
+  --font-display: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --font-ui: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+
+  --paper: #f4eee1;
+  --surface: #fcf9f1;
+  --surface-2: #ece5d4;
+  --ink: #1a232b;
+  --ink-2: #47525c;
+  --ink-3: #6f7880;
+  --line: #ddd3bd;
+  --line-strong: #c5b9a0;
+
+  --primary: #0e5a5f;
+  --primary-hover: #0a4448;
+  --primary-ink: #ffffff;
+  --primary-soft: #d6e7e3;
+  --accent: #c97d06;
+  --accent-soft: #f4e2bd;
+  --ok: #2b7647;
+  --warn: #a96a00;
+  --bad: #aa3529;
+
+  --stage: #1a2429;            /* video / avatar stage: dark in both themes */
+  --stage-2: #232f35;
+  --stage-ink: #f3ecdc;
+
+  --shadow-1: 0 1px 2px rgba(26, 35, 43, .06);
+  --shadow-2: 0 10px 30px -14px rgba(26, 35, 43, .28);
+
+  --r-1: 4px; --r-2: 8px; --r-3: 12px;
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 72px;
+  --header-h: 60px;
+  --max: 1180px;
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --paper: #111618;
+  --surface: #171e21;
+  --surface-2: #1e282c;
+  --ink: #ece6d6;
+  --ink-2: #b9bbb5;
+  --ink-3: #868e92;
+  --line: #2b373c;
+  --line-strong: #3a484e;
+
+  --primary: #62beb5;
+  --primary-hover: #82d0c8;
+  --primary-ink: #0a1d1f;
+  --primary-soft: #1a3a3b;
+  --accent: #efb03a;
+  --accent-soft: #38300f;
+  --ok: #67c186;
+  --warn: #e0a23c;
+  --bad: #ee7b6e;
+
+  --stage: #0c1113;
+  --stage-2: #151d20;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, .4);
+  --shadow-2: 0 12px 32px -16px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
