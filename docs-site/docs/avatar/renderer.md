@@ -49,7 +49,7 @@ for each bone (parent → child), in order:
     P(child) = P(parent) + dir · len             # forward-kinematics re-projection
 ```
 
-The re-projection stops fingers shrinking mid-transition when two poses point in very different directions.
+The re-projection stops fingers shrinking mid-transition when two poses point in very different directions. For the movements H and J the hold phase plays through the stored key poses (piecewise-linear, with the same bone re-projection), and a letter chosen on the Sign or Alphabet page repeats its movement until another letter is chosen.
 
 ## On the page
 

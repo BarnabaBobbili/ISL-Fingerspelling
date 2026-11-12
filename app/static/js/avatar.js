@@ -140,13 +140,23 @@ export class Avatar {
     info(letter) { return this.poses[letter]; }
     poseFor(letter) {
         const L = this.poses[letter]; if (!L) return this.restPose();
+        if (L.keys && L.keys.length) return this.keysFor(letter)[L.keys.length >> 1];            // a stroke: show its middle frame
         const arr = this.useTouched ? L.touched : L.raw;
         if (L.hands === 2) return withChir([shift(flat(arr[0]), SPACE_TWO), shift(flat(arr[1]), SPACE_TWO)], L.chir);
         return withChir([shift(flat(arr[0]), SPACE_ONE), this.restPose()[1]], [L.chir[0], -1]);   // one hand signs, the other waits below
     }
+    /** letters that are a movement (H, J): the poses the hands pass through, or null */
+    keysFor(letter) {
+        const L = this.poses[letter]; if (!L || !L.keys || !L.keys.length) return null;
+        return L.keys.map(k => withChir([shift(flat(k[0]), SPACE_TWO), shift(flat(k[1]), SPACE_TWO)], L.chir));
+    }
+    strokeAt(keys, u) {                                  // piecewise-linear position along the key poses, u in [0, 1]
+        const x = Math.min(1, Math.max(0, u)) * (keys.length - 1), i = Math.min(keys.length - 2, Math.floor(x)), f = x - i;
+        return withChir([blendPose(keys[i][0], keys[i + 1][0], f), blendPose(keys[i][1], keys[i + 1][1], f)], keys[0].chir);
+    }
     contactsFor(letter, pose) {
         const L = this.poses[letter]; if (!L || L.hands !== 2 || !this.useTouched) return [];
-        return L.contacts.map(c => V(
+        return L.contacts.map(c => c.pt ? V(c.pt[0] + SPACE_TWO[0], c.pt[1] + SPACE_TWO[1], c.pt[2] + SPACE_TWO[2]) : V(
             (pose[0][3 * c.a] + pose[1][3 * c.b]) / 2, (pose[0][3 * c.a + 1] + pose[1][3 * c.b + 1]) / 2,
             (pose[0][3 * c.a + 2] + pose[1][3 * c.b + 2]) / 2));
     }
@@ -181,7 +191,9 @@ export class Avatar {
                 const lift = withChir([blendPose(target[0], rest[0], 0.28), blendPose(target[1], rest[1], 0.28)], target.chir);
                 items.push({ ch: null, pose: lift, trans: 0.28, hold: 0.0, idx: i, lift: true });
             }
-            items.push({ ch, pose: target, trans: 0.55, hold: 0.85, idx: i });
+            const keys = this.keysFor(ch);
+            if (keys) items.push({ ch, pose: keys[0], out: keys[keys.length - 1], keys, trans: 0.55, hold: 1.5, idx: i });   // a stroke
+            else items.push({ ch, pose: target, trans: 0.55, hold: 0.85, idx: i });
             prev = ch;
         });
         items.push({ ch: null, pose: rest, trans: 0.8, hold: 0, idx: clean.length, end: true });
@@ -189,23 +201,33 @@ export class Avatar {
         this.seq = { items, from: this.cur, total: t, speed, onItem, onDone, fired: -1, startTime: performance.now() / 1000 };
         this.start();
     }
-    stop(toRest = true) { this.seq = null; if (toRest && this.poses) this.apply(this.restPose()); }
+    stop(toRest = true) { this.seq = null; this.demo = null; if (toRest && this.poses) this.apply(this.restPose()); }
 
-    showLetter(ch) { this.seq = null; const p = this.poseFor(ch); this.apply(p, this.contactsFor(ch, p)); }
+    showLetter(ch) {
+        this.seq = null; this.demo = null;
+        const p = this.poseFor(ch); this.apply(p, this.contactsFor(ch, p));
+        const keys = this.keysFor(ch);
+        if (keys && !this.still) { this.demo = { keys, t0: performance.now() / 1000 }; this.start(); }    // a movement repeats until another letter is chosen
+    }
 
     tick(now) {
         const s = this.seq;
+        if (this.demo && !s) {
+            const ph = (((now - this.demo.t0) % 3.0) / 3.0), u = Math.min(1, ph / 0.75);
+            this.apply(this.strokeAt(this.demo.keys, u));
+        }
         if (s) {
             const el = now - s.startTime;
             if (el >= s.total) { const last = s.items[s.items.length - 1]; this.apply(last.pose); const d = s.onDone; this.seq = null; d(); }
             else {
                 const k = s.items.findIndex(it => el < it.end_t);
-                const it = s.items[k], prevPose = k === 0 ? s.from : s.items[k - 1].pose;
+                const it = s.items[k], prevPose = k === 0 ? s.from : (s.items[k - 1].out || s.items[k - 1].pose);
                 const lt = (el - it.start) * s.speed, a = Math.min(1, lt / it.trans);
-                const pose = withChir([blendPose(prevPose[0], it.pose[0], ease(a)), blendPose(prevPose[1], it.pose[1], ease(a))],
+                let pose = withChir([blendPose(prevPose[0], it.pose[0], ease(a)), blendPose(prevPose[1], it.pose[1], ease(a))],
                     a < 0.5 ? (prevPose.chir || [1, -1]) : (it.pose.chir || [1, -1]));
                 const holding = a >= 1 && it.ch && it.ch !== ' ';
-                this.apply(pose, holding ? this.contactsFor(it.ch, it.pose) : []);
+                if (holding && it.keys) pose = this.strokeAt(it.keys, Math.min(1, (lt - it.trans) / (it.hold * 0.8)));      // the movement itself
+                this.apply(pose, holding && !it.keys ? this.contactsFor(it.ch, it.pose) : []);
                 if (k !== s.fired && !it.lift) { s.fired = k; s.onItem(it, k); }
             }
         }
@@ -229,7 +251,7 @@ export async function makeThumbnails(letters, skin = 'medium') {
     const c = document.createElement('canvas'); c.width = c.height = 320; c.style.cssText = 'width:320px;height:320px;position:fixed;left:-9999px';
     document.body.appendChild(c);
     const av = new Avatar(c, { background: 0x1a2429, noControls: true, preserve: true });
-    av.renderer.setPixelRatio(1); av.renderer.setSize(320, 320, false);
+    av.still = true; av.renderer.setPixelRatio(1); av.renderer.setSize(320, 320, false);
     await av.load(); av.setSkin(skin); av.camera.aspect = 1; av.setView('thumb'); av.camera.aspect = 1; av.camera.updateProjectionMatrix();
     const out = {};
     for (const L of letters) { av.showLetter(L); av.renderer.render(av.scene, av.camera); out[L] = c.toDataURL('image/jpeg', 0.85); }

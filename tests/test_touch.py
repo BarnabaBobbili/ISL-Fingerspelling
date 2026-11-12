@@ -60,10 +60,12 @@ def test_pose_library():
             continue
         raw = np.mean([abs(c["gap_raw"]) for c in v["contacts"]])
         new = np.mean([abs(c["gap_touched"]) for c in v["contacts"]])
+        assert new < 0.06, f"{k}: contact gap after alignment {new:.3f} too large"
+        if v.get("source") == "spec":        # authored poses are built touching: there is no detected 'raw' pose to improve on
+            continue
         n += 1
         improved += new < raw
-        assert new < 0.06, f"{k}: contact gap after alignment {new:.3f} too large"
-    assert n >= 15 and improved == n, "alignment must reduce the gap of every letter with contacts"
+    assert n >= 8 and improved == n, "alignment must reduce the gap of every detected letter with contacts"
     print(f"pose library ok: {n} letters with contacts, all improved")
 
 
