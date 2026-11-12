@@ -3,13 +3,15 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'ISL Fingerspelling',
+  title: 'Varna — documentation',
   tagline: 'Recognition and 3D synthesis of Indian Sign Language fingerspelling',
   favicon: 'img/favicon.svg',
 
   // The site is built to be read locally (npm start) or hosted anywhere static.
   url: 'http://localhost',
-  baseUrl: '/',
+  // built for the app with DOCS_EMBED=1 (npm run build:app) -> served at /docs/; standalone preview uses '/'
+  baseUrl: process.env.DOCS_EMBED ? '/docs/' : '/',
+  headTags: [{tagName: 'script', attributes: {}, innerHTML: "if (window.self !== window.top) document.documentElement.setAttribute('data-embedded', '1');"}],
   organizationName: 'BarnabaBobbili',
   projectName: 'ISL-Fingerspelling',
 
@@ -37,12 +39,13 @@ const config = {
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      colorMode: {defaultMode: 'dark', respectPrefersColorScheme: true},
+      colorMode: {defaultMode: 'light', respectPrefersColorScheme: true},
       navbar: {
-        title: 'ISL Fingerspelling',
-        logo: {alt: 'ISL Fingerspelling', src: 'img/logo.svg'},
+        title: 'Varna',
+        logo: {alt: 'Varna', src: 'img/logo.svg'},
         items: [
           {type: 'docSidebar', sidebarId: 'manual', position: 'left', label: 'Manual'},
+          {href: process.env.DOCS_EMBED ? '/' : 'http://127.0.0.1:8000/', label: 'Open the app', position: 'right', target: '_top'},
           {href: 'https://github.com/BarnabaBobbili/ISL-Fingerspelling', label: 'GitHub', position: 'right'},
         ],
       },

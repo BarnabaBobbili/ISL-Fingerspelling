@@ -4,25 +4,25 @@ sidebar_position: 1
 title: Overview
 ---
 
-# ISL Fingerspelling Studio
+# Varna — ISL fingerspelling
 
-**ISL Fingerspelling Studio** recognises and synthesises **Indian Sign Language (ISL) fingerspelling** — the A–Z hand alphabet used to spell names and words. It works in both directions:
+**Varna** (Sanskrit for *letter*) recognises and synthesises **Indian Sign Language (ISL) fingerspelling** — the A–Z hand alphabet used to spell names and words. It works in both directions:
 
 | Direction | What it does | Where |
 |---|---|---|
-| **Sign → text / speech** | Reads letters from a live webcam or an uploaded video, shows the **letter and its confidence score on top of the video**, builds the text and can speak it | *Live webcam* and *Upload video* tabs |
-| **Text / speech → sign** | Turns typed or dictated text into a 3D avatar that signs it letter by letter, with the current character shown on top | *Text → Sign* tab |
-| **Every character** | A reference of all 26 letters rendered on the avatar (one-handed vs two-handed, contact points) | *Alphabet* tab |
+| **Sign → text / speech** | Reads letters from a live webcam or an uploaded video, shows the **letter and its confidence score on top of the video**, builds the text and can speak it | *Recognise* page (live camera or a video file) |
+| **Text / speech → sign** | Turns typed or dictated text into a 3D avatar that signs it letter by letter, with the current character shown on top | *Sign* page |
+| **Every character** | A reference of all 26 letters rendered on the avatar (one-handed vs two-handed, contact points) | *Alphabet* page |
 
-![Text to sign avatar](/img/av_H.png)
+![The signer spelling the letter H](/img/av_H.png)
 
 ## What is inside
 
 - **Static recognition — DH-GAT v2.** A *Dual-Hand Graph Attention* network that sees both hands in one coordinate frame and models which finger touches which part of the other hand. Calibrated confidence scores.
 - **Continuous recognition — Conformer-CTC / BiLSTM-CTC.** Reads flowing fingerspelling (names, words) from video, no pauses needed, and extracts **one key frame per letter**.
-- **Video and webcam pipeline.** MediaPipe hand tracking → classifier → hold detector → text, drawn as a HUD on top of the video.
-- **3D avatar.** A solid, shaded two-hand model (not a skeleton) animated between letter poses, using **geometric transformations — rigid alignment (Kabsch) and finger inverse kinematics (FABRIK) — to make the joining points touch**.
-- **Web app.** A single-page app served by a small Python backend. Everything runs on your computer.
+- **Video and webcam pipeline.** MediaPipe hand tracking — in the browser for the live camera — → classifier → text, drawn as a HUD on top of the video. The live decoder commits letters about 0.4 s after they are signed and keeps up with fast signing and slow cameras ([Live streaming](continuous-recognition/live-streaming)).
+- **3D signer.** An upper-body figure with skinned hands (not a skeleton), animated between letter poses, using **geometric transformations — rigid alignment (Kabsch) and finger inverse kinematics (FABRIK) — to make the joining points touch**.
+- **Web app.** A designed single-page site (light and dark themes) with this manual built in, served by a small Python backend. Everything runs on your computer.
 
 ## Results at a glance
 

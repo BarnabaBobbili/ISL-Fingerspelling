@@ -5,66 +5,61 @@ title: User manual
 
 # User manual
 
-Start the server with `python app/server.py` and open [http://127.0.0.1:8000](http://127.0.0.1:8000). The coloured dot in the header shows the server state (*connecting*, *loading models…*, **models ready**, *server offline*).
+Start the server with `python app/server.py` and open [http://127.0.0.1:8000](http://127.0.0.1:8000). The header has five pages — **Recognise**, **Sign**, **Alphabet**, **Results** and **Docs** (this manual, shown inside the site) — a status light (*models ready*) and a **theme switch** (light or dark, remembered).
 
-## Live webcam
+## Recognise
 
-![Live tab](/img/live_tab.png)
+![The Recognise page](/img/live_tab.png)
+
+Two sources, chosen with the tabs: **Live camera** and **Video file**.
+
+### Live camera
 
 | Control | What it does |
 |---|---|
-| **Start camera / Stop** | opens the webcam (the browser asks for permission) and the WebSocket to the server |
-| **Recognition mode** | *Static letters* — hold each sign; *Continuous fingerspelling* — spell fluently, the model re-reads the last few seconds |
-| **Mirror preview** | flips the picture like a mirror (recognition is unaffected) |
-| **Show hand skeleton** | draws the detected joints on the video |
-| **Speak** | reads the recognised text aloud (browser speech synthesis) |
-| **Copy / Space / ⌫ / Clear** | edit the text |
+| **Start camera / Stop** | opens the webcam (the browser asks permission). Hand tracking runs **inside the page**, so no pictures leave your computer — only about 1 KB of joint positions per frame goes to the local server. |
+| **What are you signing?** | *Flowing spelling* reads names and words spelled at a natural pace; *Single letters* types a letter each time you hold one still. |
+| **Mirror the preview** | flips the picture like a mirror (recognition is unaffected) |
+| **Show tracked joints** | draws the detected joints on the video |
+| **Speak, Copy, space, ⌫, Clear** | work on the text |
 
-On the video:
+On the picture: a **tile with the current letter**, a **confidence meter** and a status (*reading*, *holding*, *typed*), the **top-3 alternatives**, and the **text so far** along the bottom. In flowing mode the newest letters are shown **greyed**: they are tentative and may still change; a letter turns solid about 0.4 s after it was signed.
 
-- **Top-left card** — the current letter, a **confidence bar** and percentage, and a status (`NO HAND`, `MOVING`, `HOLDING`, `LOCKED`).
-- **Three chips** — the top-3 alternatives.
-- **Bottom banner** — the text so far.
+Under the text box: frames per second, the delay between a frame and its answer, the number of hands seen, and whether tracking runs in the browser or (as a fallback) on the server.
 
-Below the text box: frames per second, round-trip latency and the number of hands detected.
+**Tips.** Keep both hands in view for two-handed letters, use even light and a plain background, and take your hands out of the picture for a moment between words (that is what ends a word in flowing mode).
 
-### Tips
+### Video file
 
-- Static mode: hold each letter still for ≈ 0.3 s; the card turns green and says `LOCKED` when it is typed.
-- Remove both hands for ≈ 1.4 s for a space (static) or to finish a word (continuous).
-- Continuous mode has no space symbol; words are separated by the pause.
+Drop a video (mp4, mov, avi, mkv or webm, up to 300 MB), choose the signing style and wait for the progress bar. Then:
 
-## Upload video
+- the video plays with the same HUD and joints drawn **on top**, synchronised with playback;
+- **Key frames** — one thumbnail per recognised letter with its confidence and time; click one to jump there;
+- **Text** with *Speak*, *Copy*, a download link for the **annotated video** (WebM) and the raw **JSON**.
 
-1. Drop a video (mp4, mov, avi, mkv, webm; up to 300 MB) on the panel or click to choose.
-2. Pick **Static** (held signs) or **Continuous** (flowing spelling).
-3. A progress bar shows the analysis. When done:
-   - the video plays with the **same HUD and skeleton drawn on top**, synchronised to the playback;
-   - **Extracted key frames** — one thumbnail per recognised letter with its confidence and time; click a thumbnail to jump to that moment;
-   - **Result** — the final text with *Speak*, *Copy*, a download link for the **annotated video** (WebM) and the raw **JSON**.
+Everything is processed locally. Uploaded files are kept under `results/web_jobs/` on your computer.
 
-Everything is processed locally; uploaded files are stored under `results/web_jobs/` on your computer.
+## Sign
 
-## Text → Sign
+![The Sign page](/img/av_H.png)
 
-![Avatar](/img/av_H.png)
+Type text (A–Z and spaces; other characters are ignored) or press **Dictate** and speak (Chrome or Edge), then **Sign it**. The signer spells the text; the big letter and the word (current letter highlighted) are overlaid on the stage. Click a letter chip to jump to a single letter.
 
-1. Type text (A–Z and spaces; other characters are ignored) or press **Dictate** and speak (Chrome/Edge).
-2. **Sign it** plays the animation. The big letter and the word (current character highlighted) are shown on top of the avatar.
-3. **Speed** changes the pace; **Speak while signing** says each letter's name.
-4. **Geometry** options: *Contact alignment* (toggle between raw and corrected poses), *contact markers*, *skeleton*, *skin tone*.
-5. **Record clip** saves the animation as a WebM video.
-
-Click any chip under the text box to jump to that single letter.
+- **Speed** and **Say each letter aloud**.
+- **Bring touching joints together** toggles between the raw landmark pose and the corrected one; **Mark the contact points** shows where the aligned joints meet; **Show the joint skeleton** overlays the 21 joints.
+- **Skin tone**, and the camera buttons **Front / Hands / Signer’s view**.
+- **Record a clip** saves the animation as a WebM video.
 
 ## Alphabet
 
-![Alphabet](/img/alphabet_tab.png)
+All 26 letters as the signer makes them, with *one hand / two hands* and the number of aligned contacts. Filter by hand count; click a letter for a larger view and **Sign it**.
 
-All 26 letters rendered on the avatar, with *1 hand / 2 hands* and the number of aligned contacts. Click a card to watch it in the *Text → Sign* tab.
+## Results
 
-## Keyboard / browser notes
+The measured numbers behind the project — static letters, the unseen-camera test, whole names, live decoding and contact alignment — and where the system falls short.
 
-- Microphone dictation needs **Chrome or Edge** and internet access for the browser's speech service; everything else is offline.
-- Speech synthesis uses your system voices; the language is set to English (India) when available.
-- If the camera is busy in another app, close it and press *Start camera* again.
+## Browser notes
+
+- Hand tracking in the browser uses WebAssembly (and the GPU when available); it works in current Chrome, Edge and Firefox. If it cannot start, the page falls back to server-side tracking automatically.
+- Microphone dictation needs **Chrome or Edge** and an internet connection (the browser's own speech service); everything else is offline.
+- Webcam access requires `http://localhost` or HTTPS.

@@ -39,6 +39,10 @@ A–Z only. The datasets also contain digits 1–9 (static) and a few digits/sym
 - The non-signing hand of one-handed letters simply rests; ISL grammar for body/arm position is not modelled.
 - Motion between letters is interpolated; real signers use co-articulated paths.
 
-## 9 · Hardware
+## 9 · Browser tracking speed
+
+In-browser hand tracking uses WebAssembly and, where available, the GPU. How fast it runs depends on the machine; the figures in this manual (delay, accuracy) were measured by replaying recorded landmarks, and the server's share of the delay (≈ 5 ms per frame) was measured directly, but live tracking throughput on a typical laptop has not been benchmarked. If it is too slow, choose *Single letters* mode or use the server-side fallback.
+
+## 10 · Hardware
 
 CPU only. The static classifier runs in ≈ 5 ms per frame; MediaPipe dominates (≈ 20 – 40 ms). A 1280×720 webcam is down-scaled to at most 960 px wide before sending to the server.

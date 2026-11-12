@@ -49,11 +49,26 @@ Character error rate (CER = edit distance / reference length, corpus level, gree
 | BiLSTM-CTC v2 — ablation: raw geometry + motion only (133-d) | 1,437,221 | 6.85 % | **5.12 %** |
 | Conformer-CTC v2 — features: all (351-d) | 2,569,140 | 5.75 % | **3.91 %** |
 | Conformer-CTC v2 — ablation: raw geometry + motion only (133-d) | 2,537,312 | 7.67 % | **5.91 %** |
+| Conformer-CTC v2 — features: all (351-d) + streaming training (deployed) | 2,569,140 | 5.94 % | **3.63 %** |
 
 - The **v1** Conformer was *worse* than the v1 BiLSTM. The v2 features (pretrained hand-shape embedding + both hands + motion), augmentation, a smaller convolution kernel and the intermediate CTC loss turn this around.
 - The **ablation** rows use no trunk/posterior features at all, so the difference to the "all features" rows is what the pretrained DH-GAT contributes: **Conformer test CER 5.91 % → 3.91 %; BiLSTM test CER 5.12 % → 4.28 %**.
 - Without the pretrained features the Conformer is *not* better than the BiLSTM — consistent with Conformers needing more data than the ≈ 70 minutes available. The pretrained hand-shape embedding supplies the missing prior, which is why the Conformer becomes the best model only with it.
 - Validation CER selects the model; the test set is used once.
+
+## Live decoding
+
+The live recogniser (30 Hz resampling, sliding window, stable-prefix commit) replayed over the held-out test videos, at normal and faster signing speeds and on slower cameras. Character error rate; lower is better.
+
+| Condition | Previous model (live) | Whole clip | **Live decoder** | Letter delay (median) |
+|---|---:|---:|---:|---:|
+| speed x1 | 4.56 % | 3.96 % | **3.77 %** | 0.40 s |
+| speed x1.5 | 5.82 % | 4.23 % | **4.14 %** | 0.40 s |
+| speed x2 | 11.63 % | 5.77 % | **5.77 %** | 0.40 s |
+| camera 15 fps | 5.03 % | 5.30 % | **4.33 %** | 0.40 s |
+| camera 10 fps | 6.38 % | 13.22 % | **5.68 %** | 0.43 s |
+
+*Faster signing time-compresses the hand track; slower cameras drop frames and keep true timestamps. A letter is final about 0.4 s after it was signed. The previous model is the one trained without the streaming augmentations.*
 
 ## Avatar contact alignment
 
@@ -61,34 +76,34 @@ Mean absolute contact gap in hand sizes (1 hand size ≈ 9.5 cm; 0 = skin on ski
 
 | Letter | Hands | Candidates | Contacts | Mean gap, raw | Mean gap, aligned |
 |---|---:|---:|---:|---:|---:|
-| A | 2 | 500 | 1 | 0.7021 | 0.0013 |
+| A | 2 | 500 | 1 | 0.5741 | 0.004 |
 | B | 2 | 500 | 4 | 0.0561 | 0.0136 |
 | C | 1 | 500 | 0 | — | — |
-| D | 2 | 500 | 4 | 0.115 | 0.0207 |
-| E | 2 | 500 | 3 | 0.081 | 0.0047 |
+| D | 2 | 500 | 4 | 0.1109 | 0.019 |
+| E | 2 | 500 | 3 | 0.1363 | 0.0065 |
 | F | 2 | 500 | 4 | 0.1245 | 0.0194 |
-| G | 2 | 500 | 3 | 0.3154 | 0.0151 |
-| H | 2 | 500 | 4 | 0.0643 | 0.0168 |
+| G | 2 | 500 | 3 | 0.3326 | 0.0171 |
+| H | 2 | 500 | 4 | 0.1752 | 0.0213 |
 | I | 1 | 500 | 0 | — | — |
-| J | 2 | 202 | 0 | — | — |
-| K | 2 | 500 | 3 | 0.2303 | 0.0172 |
+| J | 2 | 500 | 0 | — | — |
+| K | 2 | 500 | 3 | 0.2465 | 0.02 |
 | L | 1 | 500 | 0 | — | — |
-| M | 2 | 500 | 1 | 0.0937 | 0.005 |
-| N | 2 | 500 | 2 | 0.2585 | 0.0074 |
+| M | 2 | 500 | 1 | 0.0475 | 0.0024 |
+| N | 2 | 500 | 2 | 0.8125 | 0.0328 |
 | O | 1 | 500 | 0 | — | — |
-| P | 2 | 500 | 3 | 0.2342 | 0.0435 |
-| Q | 2 | 26 | 0 | — | — |
-| R | 2 | 500 | 1 | 0.2629 | 0.0014 |
+| P | 2 | 500 | 3 | 0.1923 | 0.0467 |
+| Q | 2 | 63 | 0 | — | — |
+| R | 2 | 500 | 2 | 0.123 | 0.0212 |
 | S | 2 | 500 | 0 | — | — |
-| T | 2 | 500 | 2 | 0.1945 | 0.0184 |
+| T | 2 | 500 | 2 | 0.161 | 0.0173 |
 | U | 1 | 500 | 0 | — | — |
 | V | 1 | 500 | 0 | — | — |
-| W | 2 | 500 | 4 | 0.2416 | 0.0186 |
-| X | 2 | 500 | 3 | 0.205 | 0.0416 |
-| Y | 2 | 500 | 2 | 0.087 | 0.0242 |
-| Z | 2 | 500 | 4 | 0.1047 | 0.0069 |
+| W | 2 | 500 | 4 | 0.3703 | 0.0225 |
+| X | 2 | 500 | 3 | 0.224 | 0.0294 |
+| Y | 2 | 500 | 2 | 0.0589 | 0.0043 |
+| Z | 2 | 500 | 4 | 0.0878 | 0.0031 |
 
-Over the 17 letters that have contacts, the mean gap falls from **0.198** to **0.016** hand sizes (≈ 1.9 cm → 1.5 mm).
+Over the 17 letters that have contacts, the mean gap falls from **0.226** to **0.018** hand sizes (≈ 2.1 cm → 1.7 mm).
 
 ## Reproducing
 

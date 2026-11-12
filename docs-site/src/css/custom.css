@@ -1,20 +1,68 @@
+/* Varna documentation theme — same tokens as the app (app/static/css/tokens.css). */
+@font-face { font-family: "Fraunces"; src: url("../../static/fonts/fraunces-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: "Fraunces"; src: url("../../static/fonts/fraunces-latin-wght-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("../../static/fonts/instrument-sans-latin-wght-normal.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("../../static/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "IBM Plex Mono"; src: url("../../static/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); font-weight: 500; font-display: swap; }
+
 :root {
-  --ifm-color-primary: #14b8a6;
-  --ifm-color-primary-dark: #12a595;
-  --ifm-color-primary-darker: #119c8d;
-  --ifm-color-primary-darkest: #0e8176;
-  --ifm-color-primary-light: #19cdb9;
-  --ifm-color-primary-lighter: #22d3c0;
-  --ifm-color-primary-lightest: #5eead4;
-  --ifm-code-font-size: 92%;
+  --ifm-font-family-base: "Instrument Sans", system-ui, sans-serif;
+  --ifm-heading-font-family: "Fraunces", Georgia, serif;
+  --ifm-font-family-monospace: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --ifm-heading-font-weight: 500;
+  --ifm-code-font-size: 90%;
+  --ifm-font-size-base: 100%;
+  --ifm-line-height-base: 1.65;
+  --ifm-global-radius: 8px;
+  --ifm-color-primary: #0e5a5f;
+  --ifm-color-primary-dark: #0c5256;
+  --ifm-color-primary-darker: #0b4e52;
+  --ifm-color-primary-darkest: #094043;
+  --ifm-color-primary-light: #106a70;
+  --ifm-color-primary-lighter: #117076;
+  --ifm-color-primary-lightest: #158187;
+  --ifm-background-color: #f4eee1;
+  --ifm-background-surface-color: #fcf9f1;
+  --ifm-font-color-base: #1a232b;
+  --ifm-toc-border-color: #ddd3bd;
+  --ifm-color-emphasis-300: #ddd3bd;
+  --ifm-navbar-background-color: #f4eee1;
+  --ifm-footer-background-color: #ece5d4;
+  --ifm-table-stripe-background: #fcf9f1;
+  --ifm-table-border-color: #ddd3bd;
+  --docusaurus-highlighted-code-line-bg: rgba(14, 90, 95, 0.1);
 }
 [data-theme='dark'] {
-  --ifm-color-primary: #5eead4;
-  --ifm-background-color: #0b1020;
-  --ifm-background-surface-color: #121a33;
-  --docusaurus-highlighted-code-line-bg: rgba(94, 234, 212, 0.12);
+  --ifm-color-primary: #62beb5;
+  --ifm-color-primary-dark: #4fb4aa;
+  --ifm-color-primary-darker: #47afa5;
+  --ifm-color-primary-darkest: #3a8f87;
+  --ifm-color-primary-light: #78c8c0;
+  --ifm-color-primary-lighter: #82d0c8;
+  --ifm-color-primary-lightest: #a3dcd6;
+  --ifm-background-color: #111618;
+  --ifm-background-surface-color: #171e21;
+  --ifm-font-color-base: #ece6d6;
+  --ifm-toc-border-color: #2b373c;
+  --ifm-color-emphasis-300: #2b373c;
+  --ifm-navbar-background-color: #111618;
+  --ifm-footer-background-color: #0c1113;
+  --ifm-table-stripe-background: #171e21;
+  --ifm-table-border-color: #2b373c;
+  --docusaurus-highlighted-code-line-bg: rgba(98, 190, 181, 0.14);
 }
-.markdown img { border-radius: 12px; }
+h1 { letter-spacing: -0.02em; font-weight: 450; }
+.markdown h1:first-child { font-size: 2.6rem; }
+.markdown img { border-radius: 10px; border: 1px solid var(--ifm-toc-border-color); }
+.navbar { border-bottom: 1px solid var(--ifm-toc-border-color); box-shadow: none; }
+.navbar__title { font-family: var(--ifm-heading-font-family); font-weight: 600; letter-spacing: -0.02em; font-size: 1.35rem; }
+.menu__link--active:not(.menu__link--sublist) { background: color-mix(in srgb, var(--ifm-color-primary) 12%, transparent); font-weight: 500; }
 table { display: table; width: 100%; }
-.metric-good { color: #4ade80; font-weight: 600; }
-.metric-bad { color: #f87171; font-weight: 600; }
+code { border: 0; background: color-mix(in srgb, var(--ifm-color-primary) 9%, transparent); }
+.theme-admonition { border-radius: 8px; }
+/* when shown inside the app's iframe the app provides the header */
+html[data-embedded] .navbar { display: none; }
+html[data-embedded] .footer { display: none; }
+html[data-embedded] { --ifm-navbar-height: 0rem; }
+html[data-embedded] .theme-doc-sidebar-container, html[data-embedded] .theme-doc-toc-desktop { top: 0; }
+html[data-embedded] .navbar-sidebar { display: none; }

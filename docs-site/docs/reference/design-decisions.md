@@ -40,3 +40,13 @@ Every significant choice, with the reason and the alternative that was rejected 
 | DD-022 | Server on **Starlette**, WebSocket pull-based frames | FastAPI/Starlette version conflict on the target machine; one frame in flight bounds latency | FastAPI; push-based streaming (queueing) |
 | DD-023 | HUD drawn client-side on a canvas | zero extra latency, identical look for webcam and uploaded video | server-side annotated frames only |
 | DD-024 | Three.js vendored locally | works offline | CDN |
+| DD-025 | **Track hands in the browser** and send landmarks, not pictures | removes JPEG encoding and server-side detection from the live critical path (the server tracker managed ≈10 fps), and no frame leaves the page | server-side tracking only (kept as automatic fallback) |
+| DD-026 | **Resample to a fixed 30 Hz grid** before the live model | the models were trained at 30 fps; slow cameras then cost little (10 fps camera: 5.7 % vs 13 % error) | feed frames as they arrive |
+| DD-027 | **Stable-prefix commit** with a greyed tentative tail | committed letters never change; the delay is bounded (≈0.4 s) | re-decode and replace the whole text each time (flicker) |
+| DD-028 | Hold detector in **seconds**, not frames | identical behaviour at 15, 30 and 60 fps | frame-count thresholds |
+| DD-029 | Train for live use: **sub-word crops, speed 0.55–1.3×, word joins** | windows start mid-word and people sign faster live; error at 2× speed 11.6 % → 5.8 % | whole-word training only |
+| DD-030 | Signer hands = **skinned mesh retargeted from landmarks**, flat-skeleton aware | real hand shapes; the model's skeleton is flat, so rotations are carried along chains explicitly | cylinders and spheres (rubbery), or per-bone shortest arc (flips near 180°) |
+| DD-031 | **Mirror a hand across its palm plane** when its 3D geometry contradicts its slot's handedness | depth is only estimated, so about 1 pose in 10 would otherwise twist the mesh | trust the noisy depth; swap meshes mid-animation |
+| DD-032 | One-handed letters: right hand signs, **other arm hangs at the side** | no floating second hand; matches how a signer rests | draw a faded second hand |
+| DD-033 | Documentation **built into the app** (Docusaurus at `/docs`, embedded under the site header) | one place to read and use the project; same fonts and palette, synced theme | a separate docs site |
+

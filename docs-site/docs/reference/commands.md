@@ -51,6 +51,11 @@ python src/training/train_cont_v2.py --kind conformer --parts all --tag conforme
 python src/training/train_cont_v2.py --kind bilstm    --parts all --tag bilstm_all    --bs 32 --epochs 60
 python src/training/train_cont_v2.py --kind conformer --parts raw --tag conformer_raw --bs 32 --epochs 60   # ablation
 python src/training/select_best_cont.py                        # lowest validation CER → checkpoints/cont_best.pt
+
+# streaming-oriented model (sub-word crops, speed 0.55-1.3x, word joins) — what the app deploys
+python src/training/train_cont_v2.py --kind conformer --parts all --tag conformer_stream --bs 32 --epochs 70 --stream-aug
+python src/evaluation/eval_streaming.py --ckpt checkpoints/cont_v2_conformer_stream.pt --tag stream_test   # live-decoding benchmark
+python src/training/select_best_cont.py --tag conformer_stream  # deploy it (chosen on the live benchmark)
 ```
 
 ## Avatar
@@ -62,7 +67,8 @@ ISL_V2_DIR=static_v2r python -m src.avatar.build_poses         # → app/static/
 ## Tests
 
 ```bash
-python tests/test_static_pipeline.py        # synthetic held-letter video, with and without gaps
+python tests/test_streaming.py              # resampler + live decoder on a real held-out video
+python tests/test_static_pipeline.py        # synthetic held-letter video, 30 and 15 fps, with and without gaps
 python tests/test_touch.py                  # contact alignment reduces gaps; bone lengths preserved
 python tests/test_ctc.py                    # forced alignment and greedy decoding
 ```
@@ -72,8 +78,20 @@ python tests/test_ctc.py                    # forced alignment and greedy decodi
 ```bash
 cd docs-site
 npm install --prefer-online
-npm start          # live preview on http://localhost:3000
-npm run build      # static site in docs-site/build
+npm start                       # live preview on http://localhost:3000 (standalone)
+DOCS_EMBED=1 npm run build:app  # builds into app/docs_build, served by the app at /docs and shown on its Docs page
+```
+
+(Set `DOCS_EMBED=1` as a plain variable; in Git Bash a value like `/docs/` would be rewritten into a Windows path.)
+
+## Website data and the browser tracker
+
+```bash
+python src/evaluation/make_site_data.py --cont-best conformer_stream --streaming stream_test --streaming-base base_test
+python src/evaluation/make_benchmark_doc.py --static-default main_r --cont-best conformer_stream --streaming stream_test --streaming-base base_test
+# browser tracker parity (needs: npm i puppeteer-core, Edge or Chrome, the server running):
+node tests/browser_parity.mjs <dir with uids.txt + <uid>.webm> video|image out.json
+python src/evaluation/browser_parity.py out.json
 ```
 
 ## Environment variables

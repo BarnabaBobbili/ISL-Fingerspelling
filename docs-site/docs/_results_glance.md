@@ -4,5 +4,5 @@
 | Static letters | original in-domain split | **98.0 %** |
 | Static letters | cross-source (ISL_DATA never seen) | **70.0 %** |
 | Calibration | expected calibration error on real videos | **0.011** (v1: 0.170) |
-| Continuous (Conformer-CTC v2) | character error rate, test videos | **3.91 %** (v1 BiLSTM: 14.75 %) |
-| Avatar contact alignment | mean contact gap | **0.198 → 0.016** hand sizes |
+| Continuous (Conformer-CTC v2) | character error rate, test videos | **3.63 %** (v1 BiLSTM: 14.75 %) |
+| Avatar contact alignment | mean contact gap | **0.226 → 0.018** hand sizes |

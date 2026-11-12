@@ -43,15 +43,15 @@ flowchart LR
 
 | Component | File | Role |
 |---|---|---|
-| Hand tracker | `src/pipeline/hands.py` | MediaPipe wrapper, hands ordered by wrist-x |
+| Hand tracker | `src/pipeline/hands.py`, `app/static/js/tracker.js` | MediaPipe (Python on the server, WebAssembly in the browser), hands ordered by wrist-x |
 | Static classifier | `src/pipeline/classifier.py` | DH-GAT v2 + temperature calibration |
-| Hold detector | `src/pipeline/hold.py` | motion + stability → typed letters |
-| Continuous recogniser | `src/pipeline/continuous.py` | CTC model, sliding window, key frames |
+| Hold detector | `src/pipeline/hold.py` | motion + stability → typed letters (time-based, any frame rate) |
+| Continuous recogniser | `src/pipeline/continuous.py`, `streaming.py` | CTC model; offline key frames; live 30 Hz resampling and stable-prefix commit |
 | Video analysis | `src/pipeline/video.py` | upload jobs, annotated video |
 | HUD | `src/pipeline/overlay.py`, `app/static/js/hud.js` | the same HUD in OpenCV and in the browser |
 | Pose library | `src/avatar/build_poses.py` | builds `poses.json` from data |
 | Contact geometry | `src/avatar/touch.py` | alignment + IK |
-| Renderer | `app/static/js/avatar.js` | Three.js solid hands |
+| 3D signer | `app/static/js/avatar.js`, `signer/` | Three.js body, two-bone IK arms, skinned hands |
 | Web server | `app/server.py` | Starlette: pages, WebSocket, upload API |
 
 ## Data flow in the live tab
@@ -61,12 +61,13 @@ sequenceDiagram
     participant B as Browser
     participant S as Server
     B->>B: getUserMedia() → video element
-    loop pull-based, one frame in flight
-        B->>S: JPEG frame (WebSocket, binary)
-        S->>S: MediaPipe → classifier → hold detector
-        S-->>B: JSON {hands, letter, confidence, top3, status, text}
-        B->>B: draw video + skeleton + HUD on a canvas
+    B->>B: MediaPipe (WebAssembly) tracks both hands, every frame
+    loop once per camera frame
+        B->>S: landmark packet ≈1 KB (WebSocket, JSON)
+        S->>S: 30 Hz resampler → features → classifier or sliding-window decoder
+        S-->>B: {letter, confidence, top3, status, text, tentative}
+        B->>B: draw video + joints (local) + HUD on a canvas
     end
 ```
 
-The browser sends the next frame only after receiving the previous answer, so latency never accumulates; typical round-trip is 30 – 60 ms on a laptop CPU.
+Tracking in the browser means no picture ever leaves the page, no JPEG is encoded, and the server only runs the models. At most four packets are in flight, so latency stays bounded. If the browser tracker cannot start, the page falls back to the original path: JPEG frames sent one at a time and tracked on the server (about 10 fps). See [Live streaming](../continuous-recognition/live-streaming).

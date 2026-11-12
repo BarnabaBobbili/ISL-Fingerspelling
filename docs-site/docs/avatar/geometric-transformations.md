@@ -59,11 +59,11 @@ Steps 2 and 3 run for up to four rounds and the round with the smallest mean `|g
 | | Value |
 |---|---:|
 | letters with contacts | 17 of 20 two-handed (J, Q, S have no reliable contact) |
-| mean absolute gap, raw | **0.198** hand sizes ≈ 1.9 cm |
-| mean absolute gap, after alignment | **0.016** hand sizes ≈ 1.5 mm |
-| worst letter after alignment | 0.044 (P) |
+| mean absolute gap, raw | **0.226** hand sizes ≈ 2.1 cm |
+| mean absolute gap, after alignment | **0.018** hand sizes ≈ 1.7 mm |
+| worst letters after alignment | 0.047 (P), 0.032 (N) |
 
-Examples: A 0.70 → 0.001 · G 0.32 → 0.015 · R 0.26 → 0.001 · K 0.23 → 0.017 · W 0.24 → 0.019.
+Examples: A 0.57 → 0.004 · G 0.33 → 0.017 · R 0.12 → 0.021 · K 0.25 → 0.020 · W 0.37 → 0.022.
 
 ## In the browser
 

@@ -91,11 +91,24 @@ def cont_table():
     for f in sorted(R.glob("cont_v2_*.json")):
         r = json.loads(f.read_text())
         name = f"{'Conformer' if r['kind'] == 'conformer' else 'BiLSTM'}-CTC v2" + (" — features: all (351-d)" if r["parts"] == "all" else " — ablation: raw geometry + motion only (133-d)")
+        if r["tag"].endswith("_stream"):
+            name += " + streaming training (deployed)"
         rows.append((name, f"{r['params']:,}", r["val_cer"], r["test_cer"]))
     out = ["| Model | Parameters | Validation CER | **Test CER** |", "|---|---:|---:|---:|"]
     for n, p, v, t in rows:
         out.append(f"| {n} | {p} | {pct(v, 2)} | **{pct(t, 2)}** |")
     return "\n".join(out), rows
+
+
+def streaming_table(tag, base):
+    cur, old = load(f"streaming_{tag}.json"), load(f"streaming_{base}.json") if base else None
+    if cur is None:
+        return "", False
+    head = ["| Condition | Previous model (live) | Whole clip | **Live decoder** | Letter delay (median) |", "|---|---:|---:|---:|---:|"]
+    for k, v in cur["conditions"].items():
+        b = f"{100 * old['conditions'][k]['stream_cer']:.2f} %" if old else "—"
+        head.append(f"| {k} | {b} | {pct(v['whole_cer'], 2)} | **{pct(v['stream_cer'], 2)}** | {v['latency_median_s']:.2f} s |")
+    return chr(10).join(head), True
 
 
 def avatar_table():
@@ -115,6 +128,9 @@ def avatar_table():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--static-default", default="main")
+    ap.add_argument("--cont-best", default=None, help="tag of the deployed continuous model")
+    ap.add_argument("--streaming", default=None)
+    ap.add_argument("--streaming-base", default=None)
     a = ap.parse_args()
 
     st_tab, st_rows = static_table()
@@ -124,7 +140,9 @@ def main():
 
     best_static = next(r for r in st_rows if r[5] == a.static_default)
     cont_v2 = [r for r in ct_rows if "v2" in r[0] and "features: all" in r[0]]
-    best_cont = min(cont_v2, key=lambda r: r[2]) if cont_v2 else None
+    best_cont = next((r for r in cont_v2 if "(deployed)" in r[0]), None) if a.cont_best else None
+    best_cont = best_cont or (min(cont_v2, key=lambda r: r[2]) if cont_v2 else None)
+    st_tab_live, has_live = streaming_table(a.streaming, a.streaming_base) if a.streaming else ("", False)
 
     def cer_of(kind, parts):
         for r in ct_rows:
@@ -137,6 +155,16 @@ def main():
         if a_ is not None and b_ is not None:
             parts_txt.append(f"{label} test CER {pct(a_, 2)} → {pct(b_, 2)}")
     abl = "; ".join(parts_txt)
+
+    live_section = (f"""## Live decoding
+
+The live recogniser (30 Hz resampling, sliding window, stable-prefix commit) replayed over the held-out test videos, at normal and faster signing speeds and on slower cameras. Character error rate; lower is better.
+
+{st_tab_live}
+
+*Faster signing time-compresses the hand track; slower cameras drop frames and keep true timestamps. A letter is final about 0.4 s after it was signed. The previous model is the one trained without the streaming augmentations.*
+
+""" if has_live else "")
 
     md = f"""---
 sidebar_position: 1
@@ -181,7 +209,7 @@ Character error rate (CER = edit distance / reference length, corpus level, gree
 - Without the pretrained features the Conformer is *not* better than the BiLSTM — consistent with Conformers needing more data than the ≈ 70 minutes available. The pretrained hand-shape embedding supplies the missing prior, which is why the Conformer becomes the best model only with it.
 - Validation CER selects the model; the test set is used once.
 
-## Avatar contact alignment
+{live_section}## Avatar contact alignment
 
 Mean absolute contact gap in hand sizes (1 hand size ≈ 9.5 cm; 0 = skin on skin).
 
