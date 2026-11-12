@@ -43,16 +43,16 @@ Everything is processed locally. Uploaded files are kept under `results/web_jobs
 
 ![The Sign page](/img/av_H.png)
 
-Type text (A–Z and spaces; other characters are ignored) or press **Dictate** and speak (Chrome or Edge), then **Sign it**. The signer spells the text; the big letter and the word (current letter highlighted) are overlaid on the stage. Click a letter chip to jump to a single letter.
+Type text (A–Z and spaces; other characters are ignored) or press **Dictate** and speak (Chrome or Edge), then **Sign it**. The hands spell the text; the big letter and the word (current letter highlighted) are overlaid on the stage. Click a letter chip to jump to a single letter.
 
 - **Speed** and **Say each letter aloud**.
 - **Bring touching joints together** toggles between the raw landmark pose and the corrected one; **Mark the contact points** shows where the aligned joints meet; **Show the joint skeleton** overlays the 21 joints.
-- **Skin tone**, and the camera buttons **Front / Hands / Signer’s view**.
+- **Skin tone**, and the camera buttons **Front / Close / Above**.
 - **Record a clip** saves the animation as a WebM video.
 
 ## Alphabet
 
-All 26 letters as the signer makes them, with *one hand / two hands* and the number of aligned contacts. Filter by hand count; click a letter for a larger view and **Sign it**.
+All 26 letters as the hands make them, with *one hand / two hands* and the number of aligned contacts. Filter by hand count; click a letter for a larger view and **Sign it**.
 
 ## Results
 

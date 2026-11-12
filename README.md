@@ -6,7 +6,7 @@ Recognition **and** synthesis of **Indian Sign Language (ISL) fingerspelling** (
 |---|---|
 | **Sign → text / speech** | live webcam or uploaded video; the **letter and its confidence score are drawn on top of the video**; text is built up and can be spoken |
 | **Continuous fingerspelling** | reads flowing spelling (names, words) and extracts **one key frame per letter** |
-| **Text / speech → sign** | a 3D upper-body signer with skinned hands signs typed or dictated text; one-handed letters leave the other arm at rest; joining points are brought to touch with **geometric transformations** (Kabsch alignment + FABRIK inverse kinematics) |
+| **Text / speech → sign** | two skinned 3D hands with sleeves sign typed or dictated text; for one-handed letters the other hand waits out of frame; joining points are brought to touch with **geometric transformations** (Kabsch alignment + FABRIK inverse kinematics) |
 | **All 26 characters** | alphabet reference rendered on the avatar |
 
 ## Models

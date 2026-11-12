@@ -60,20 +60,6 @@ def handedness_sign(P):
     return 1 if float(np.cross(u, v) @ t) > 0 else -1
 
 
-def fix_handedness(P, want):
-    """
-    MediaPipe's depth (z) is only an estimate, so the geometry of a hand sometimes implies the
-    wrong handedness for its slot (slot 0 = viewer-left hand = a right hand, slot 1 = a left hand).
-    When that happens the hand is MIRRORED across its own palm plane (through the wrist): a valid
-    hand of the opposite chirality with the same finger shapes. Returns (P, was_fixed).
-    """
-    if handedness_sign(P) == want:
-        return P, False
-    n = np.cross(P[5] - P[0], P[17] - P[0])
-    n = n / (np.linalg.norm(n) + 1e-9)
-    return P - 2.0 * ((P - P[0]) @ n)[:, None] * n[None, :], True
-
-
 def to_three(P):
     """image coords (y down, z toward camera = negative) -> three.js (y up, z toward viewer)."""
     Q = P.copy()
@@ -121,12 +107,10 @@ def main():
         dist = np.linalg.norm(feat[:, None] - feat[None], axis=-1).sum(1)
         ref = idx[int(dist.argmin())]
 
-        fixed = []
-        H = []
-        for h in hands:
-            P, was = fix_handedness(g[ref, h], +1 if h == 0 else -1)      # slot 0 = right hand, slot 1 = left hand
-            fixed.append(bool(was))
-            H.append(touch.regularise_bones(P, lengths * hsr[ref, h]))
+        # handedness of each hand as the landmarks actually show it (the 3D mesh of that chirality is used
+        # by the renderer, so every pose keeps exactly the orientation and shape in the data)
+        chir = [handedness_sign(g[ref, h]) for h in hands]
+        H = [touch.regularise_bones(g[ref, h], lengths * hsr[ref, h]) for h in hands]
         contacts, gap_raw, gap_new = [], [], []
         if two:
             A, B = H
@@ -159,7 +143,7 @@ def main():
                           "gap_raw": round(gr, 4), "gap_touched": round(gn, 4)}
                          for (i, j), gr, gn in zip(contacts, gap_raw, gap_new)],
             "n_candidates": int(len(idx)),
-            "mirrored": fixed,
+            "chir": chir,
         }
         rows.append([L, 2 if two else 1, len(idx), len(contacts),
                      round(float(np.mean(np.abs(gap_raw))), 4) if gap_raw else "",
@@ -173,7 +157,7 @@ def main():
     rest_l = rest_r * np.array([-1, 1, 1], np.float32)
     poses["_rest"] = {"hands": 2, "raw": [rest_l.round(4).tolist(), rest_r.round(4).tolist()],
                       "touched": [rest_l.round(4).tolist(), rest_r.round(4).tolist()], "contacts": [],
-                      "n_candidates": 0}
+                      "n_candidates": 0, "chir": [-1, 1]}
     meta = {"unit": "hand size (wrist->middle MCP, ~9.5cm)", "radius": touch.RADIUS.round(4).tolist(),
             "parent": touch.PARENT, "bone_lengths": lengths.round(4).tolist(), "one_handed": sorted(ONE_HANDED)}
     OUT.parent.mkdir(parents=True, exist_ok=True)

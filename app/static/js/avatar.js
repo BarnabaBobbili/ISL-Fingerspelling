@@ -1,19 +1,20 @@
-/* The 3D signer.
+/* The 3D signer: two skinned hands with cloth sleeves.
  *
- *  - Body (signer/body.js)   upper-body figure in a kurta, arms solved by two-bone IK
- *  - HandRig (signer/rig.js) a skinned hand mesh driven by the 21 landmarks of each hand
- *  - blendPose               joint interpolation + bone-length re-projection (forward kinematics),
- *                            so fingers never shrink or stretch while moving between letters
- *  - Avatar                  scene, lighting, camera presets, the letter timeline, contact markers
+ *  - HandRig (signer/rig.js)     a skinned hand mesh driven by the 21 landmarks of each hand
+ *  - Sleeves (signer/sleeves.js) a cloth forearm behind each hand
+ *  - blendPose                   joint interpolation + bone-length re-projection (forward kinematics),
+ *                                so fingers never shrink or stretch while moving between letters
+ *  - Avatar                      scene, lighting, camera presets, the letter timeline, contact markers
  *
- * Slot 0 is the signer's RIGHT hand (the viewer's left); slot 1 the left hand. One-handed letters are
- * signed with the right hand; the other arm hangs relaxed at the side.
+ * Each pose is shown exactly as the landmarks give it: the left- or right-hand mesh is chosen from the
+ * hand's real geometry (pose.chir), nothing is mirrored. A hand that is not needed rests BELOW the
+ * frame and rises when the next letter needs it.
  */
 import * as THREE from 'three';
 import { OrbitControls } from '/static/vendor/OrbitControls.js';
 import { RoomEnvironment } from '/static/vendor/RoomEnvironment.js';
 import { HandRig, loadHandModel } from '/static/js/signer/rig.js';
-import { Body } from '/static/js/signer/body.js';
+import { Sleeves } from '/static/js/signer/sleeves.js';
 
 const PARENT = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19];
 const SKINS = { light: 0xf0c6a4, medium: 0xcf9870, deep: 0x8a5738 };
@@ -21,16 +22,16 @@ const V = (x, y, z) => new THREE.Vector3(x, y, z);
 const ease = t => t * t * (3 - 2 * t);
 const flat = pts => Float32Array.from(pts.flat());
 
-/* where the signing space sits in front of the chest, and where a resting hand hangs */
-const SPACE_TWO = [0, -3.2, 2.5];
-const SPACE_ONE = [-1.6, -2.7, 2.7];
-const HANG = [[-2.55, -5.9, 0.9], [2.55, -5.9, 0.9]];
+/* where the signing space sits, and where a resting hand waits (below the frame) */
+const SPACE_TWO = [0, -3.3, 2.0];
+const SPACE_ONE = [0.1, -4.1, 2.0];
+const WAIT = [[-2.2, -11.5, 0.8], [2.2, -11.5, 0.8]];
 
-const VIEWS = {   // position, target, fov, head visible
-    front: { p: [0, -0.8, 19.6], t: [0, -1.7, 0], fov: 36, head: true },
-    hands: { p: [0, -2.6, 11.0], t: [0, -3.4, 1.8], fov: 36, head: true },
-    thumb: { p: [-0.5, -2.6, 12.2], t: [-0.5, -3.2, 1.8], fov: 36, head: true },
-    signer: { p: [0, 2.5, 1.8], t: [0, -3.4, 3.0], fov: 60, head: false },
+const VIEWS = {   // position, target, fov
+    front: { p: [0, -3.0, 12.2], t: [0, -3.3, 2.0], fov: 36 },
+    close: { p: [0, -3.1, 8.8], t: [0, -3.3, 2.0], fov: 36 },
+    above: { p: [0, 5.2, 9.5], t: [0, -3.6, 2.2], fov: 36 },
+    thumb: { p: [-0.1, -3.0, 11.2], t: [-0.1, -3.2, 2.0], fov: 36 },
 };
 
 /* ---------------------------------------------------------------- pose maths */
@@ -54,11 +55,12 @@ export function blendPose(A, B, t) {
     return out;
 }
 const shift = (P, o) => { const Q = new Float32Array(63); for (let i = 0; i < 63; i++) Q[i] = P[i] + o[i % 3]; return Q; };
-const hang = (P, wrist) => {                          // rotate 180° about z (fingers point down), put the wrist at `wrist`
+const place = (P, wrist) => {                         // translate so the wrist sits at `wrist`
     const Q = new Float32Array(63);
-    for (let j = 0; j < 21; j++) { Q[3 * j] = -(P[3 * j] - P[0]) + wrist[0]; Q[3 * j + 1] = -(P[3 * j + 1] - P[1]) + wrist[1]; Q[3 * j + 2] = P[3 * j + 2] - P[2] + wrist[2]; }
+    for (let j = 0; j < 21; j++) { Q[3 * j] = P[3 * j] - P[0] + wrist[0]; Q[3 * j + 1] = P[3 * j + 1] - P[1] + wrist[1]; Q[3 * j + 2] = P[3 * j + 2] - P[2] + wrist[2]; }
     return Q;
 };
+const withChir = (pose, chir) => { pose.chir = chir; return pose; };
 
 /* -------------------------------------------------------------------- Avatar */
 export class Avatar {
@@ -97,13 +99,16 @@ export class Avatar {
     }
 
     async load(url = '/static/data/poses.json') {
-        const [d, left, right] = await Promise.all([fetch(url).then(r => r.json()), loadHandModel('left'), loadHandModel('right')]);
+        const [d, ...models] = await Promise.all([fetch(url).then(r => r.json()), loadHandModel('left'), loadHandModel('right'), loadHandModel('left'), loadHandModel('right')]);
         this.poses = d.letters; this.meta = d.meta;
-        const rigs = [new HandRig(left, this.mats.skin), new HandRig(right, this.mats.skin)];
-        const rightType = rigs.find(r => r.handed > 0) || rigs[1], leftType = rigs.find(r => r !== rightType);
-        this.rigs = [rightType, leftType];                       // slot 0 = right-type hand, slot 1 = left-type hand
-        this.rigs.forEach(r => this.scene.add(r.root));
-        this.body = new Body(this.scene, this.mats);
+        // every slot owns a right-type and a left-type hand; the one matching the pose's real geometry is shown
+        const type = rg => (rg.handed > 0 ? 1 : -1);
+        this.rigs = [0, 1].map(i => {
+            const pair = [new HandRig(models[2 * i], this.mats.skin), new HandRig(models[2 * i + 1], this.mats.skin)];
+            const byType = {}; pair.forEach(rg => { byType[type(rg)] = rg; this.scene.add(rg.root); });
+            return byType;
+        });
+        this.sleeves = new Sleeves(this.scene, this.mats);
         const mk = () => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(40 * 6), 3));
             return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x62beb5, depthTest: false, transparent: true })); };
         this.skel = [mk(), mk()]; this.skel.forEach(s => { s.visible = false; s.renderOrder = 10; s.frustumCulled = false; this.scene.add(s); });
@@ -120,25 +125,24 @@ export class Avatar {
 
     setSkin(name) { this.mats.skin.color.setHex(SKINS[name] || SKINS.medium); }
 
-    /** camera presets: 'front' (whole signer) | 'hands' (close-up) | 'signer' (the signer's own point of view) */
+    /** camera presets: 'front' | 'close' | 'above' */
     setView(name) {
         const v = VIEWS[name] || VIEWS.front; this.view = name;
         this.camera.position.set(...v.p); this.camera.fov = v.fov; this.camera.updateProjectionMatrix();
         if (this.controls) { this.controls.target.set(...v.t); this.controls.update(); } else this.camera.lookAt(...v.t);
-        if (this.body) this.body.setHeadVisible(v.head);
     }
 
-    /* --- poses (world coordinates; slot 0 = signer's right hand) --- */
+    /* --- poses (world coordinates; slot 0 = the hand on the viewer's left) --- */
     restPose() {
         const r = this.poses._rest.raw;                         // [left-type, right-type] relative to the wrist
-        return [hang(flat(r[1]), HANG[0]), hang(flat(r[0]), HANG[1])];
+        return withChir([place(flat(r[1]), WAIT[0]), place(flat(r[0]), WAIT[1])], [1, -1]);      // waiting below the frame
     }
     info(letter) { return this.poses[letter]; }
     poseFor(letter) {
         const L = this.poses[letter]; if (!L) return this.restPose();
         const arr = this.useTouched ? L.touched : L.raw;
-        if (L.hands === 2) return [shift(flat(arr[0]), SPACE_TWO), shift(flat(arr[1]), SPACE_TWO)];
-        return [shift(flat(arr[0]), SPACE_ONE), this.restPose()[1]];       // one hand signs, the other hangs at the side
+        if (L.hands === 2) return withChir([shift(flat(arr[0]), SPACE_TWO), shift(flat(arr[1]), SPACE_TWO)], L.chir);
+        return withChir([shift(flat(arr[0]), SPACE_ONE), this.restPose()[1]], [L.chir[0], -1]);   // one hand signs, the other waits below
     }
     contactsFor(letter, pose) {
         const L = this.poses[letter]; if (!L || L.hands !== 2 || !this.useTouched) return [];
@@ -149,13 +153,13 @@ export class Avatar {
 
     apply(pose, marks = []) {
         this.cur = pose;
-        const wr = [], fw = [];
+        const chir = pose.chir || [1, -1];
         pose.forEach((P, i) => {
-            this.rigs[i].pose(P);
-            wr.push(V(P[0], P[1], P[2]));
-            fw.push(V(P[27] - P[0], P[28] - P[1], P[29] - P[2]).normalize());
+            const on = chir[i] > 0 ? 1 : -1;
+            this.rigs[i][on].root.visible = true; this.rigs[i][-on].root.visible = false;
+            this.rigs[i][on].pose(P);
         });
-        this.body.update(wr, fw);
+        this.sleeves.update(pose);
         this.skel.forEach((s, i) => {
             s.visible = this.showSkeleton; if (!s.visible) return;
             const a = s.geometry.attributes.position; let k = 0;
@@ -174,7 +178,7 @@ export class Avatar {
             if (ch === ' ') { items.push({ ch, pose: rest, trans: 0.6, hold: 0.3, idx: i }); prev = null; return; }
             const target = this.poseFor(ch);
             if (prev === ch) {        // repeated letter: relax slightly toward rest so the repeat is visible
-                const lift = [blendPose(target[0], rest[0], 0.28), blendPose(target[1], rest[1], 0.28)];
+                const lift = withChir([blendPose(target[0], rest[0], 0.28), blendPose(target[1], rest[1], 0.28)], target.chir);
                 items.push({ ch: null, pose: lift, trans: 0.28, hold: 0.0, idx: i, lift: true });
             }
             items.push({ ch, pose: target, trans: 0.55, hold: 0.85, idx: i });
@@ -198,13 +202,13 @@ export class Avatar {
                 const k = s.items.findIndex(it => el < it.end_t);
                 const it = s.items[k], prevPose = k === 0 ? s.from : s.items[k - 1].pose;
                 const lt = (el - it.start) * s.speed, a = Math.min(1, lt / it.trans);
-                const pose = [blendPose(prevPose[0], it.pose[0], ease(a)), blendPose(prevPose[1], it.pose[1], ease(a))];
+                const pose = withChir([blendPose(prevPose[0], it.pose[0], ease(a)), blendPose(prevPose[1], it.pose[1], ease(a))],
+                    a < 0.5 ? (prevPose.chir || [1, -1]) : (it.pose.chir || [1, -1]));
                 const holding = a >= 1 && it.ch && it.ch !== ' ';
                 this.apply(pose, holding ? this.contactsFor(it.ch, it.pose) : []);
                 if (k !== s.fired && !it.lift) { s.fired = k; s.onItem(it, k); }
             }
         }
-        if (this.body) this.body.head.rotation.z = Math.sin(now * 0.9) * 0.025;      // gentle idle
         const pulse = 0.85 + 0.25 * Math.sin(now * 6);
         this.marks.forEach(m => m.scale.setScalar(pulse));
     }

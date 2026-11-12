@@ -45,8 +45,8 @@ Every significant choice, with the reason and the alternative that was rejected 
 | DD-027 | **Stable-prefix commit** with a greyed tentative tail | committed letters never change; the delay is bounded (≈0.4 s) | re-decode and replace the whole text each time (flicker) |
 | DD-028 | Hold detector in **seconds**, not frames | identical behaviour at 15, 30 and 60 fps | frame-count thresholds |
 | DD-029 | Train for live use: **sub-word crops, speed 0.55–1.3×, word joins** | windows start mid-word and people sign faster live; error at 2× speed 11.6 % → 5.8 % | whole-word training only |
-| DD-030 | Signer hands = **skinned mesh retargeted from landmarks**, flat-skeleton aware | real hand shapes; the model's skeleton is flat, so rotations are carried along chains explicitly | cylinders and spheres (rubbery), or per-bone shortest arc (flips near 180°) |
-| DD-031 | **Mirror a hand across its palm plane** when its 3D geometry contradicts its slot's handedness | depth is only estimated, so about 1 pose in 10 would otherwise twist the mesh | trust the noisy depth; swap meshes mid-animation |
-| DD-032 | One-handed letters: right hand signs, **other arm hangs at the side** | no floating second hand; matches how a signer rests | draw a faded second hand |
+| DD-030 | Hands = **skinned mesh retargeted from landmarks**, flat-skeleton aware | real hand shapes; the model's skeleton is flat, so rotations are carried along chains explicitly | cylinders and spheres (rubbery), or per-bone shortest arc (flips near 180°) |
+| DD-031 | **Pick the left- or right-hand mesh from each pose's real geometry; never mirror a pose** | every letter keeps the shape and orientation in the data (forcing a fixed handedness by mirroring changed some signs) | mirror a hand across its palm plane |
+| DD-032 | A hand that is not needed **waits below the frame** and rises when needed | no floating second hand; natural entry and exit | draw a faded second hand |
 | DD-033 | Documentation **built into the app** (Docusaurus at `/docs`, embedded under the site header) | one place to read and use the project; same fonts and palette, synced theme | a separate docs site |
-
+| DD-034 | **Hands and sleeves only, no head or body** | a faceless figure with IK arms read as uncanny and bent the arms oddly; learners need the hands large and in the data's orientation | upper-body figure (built and dropped) |

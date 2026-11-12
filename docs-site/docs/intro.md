@@ -21,7 +21,7 @@ title: Overview
 - **Static recognition — DH-GAT v2.** A *Dual-Hand Graph Attention* network that sees both hands in one coordinate frame and models which finger touches which part of the other hand. Calibrated confidence scores.
 - **Continuous recognition — Conformer-CTC / BiLSTM-CTC.** Reads flowing fingerspelling (names, words) from video, no pauses needed, and extracts **one key frame per letter**.
 - **Video and webcam pipeline.** MediaPipe hand tracking — in the browser for the live camera — → classifier → text, drawn as a HUD on top of the video. The live decoder commits letters about 0.4 s after they are signed and keeps up with fast signing and slow cameras ([Live streaming](continuous-recognition/live-streaming)).
-- **3D signer.** An upper-body figure with skinned hands (not a skeleton), animated between letter poses, using **geometric transformations — rigid alignment (Kabsch) and finger inverse kinematics (FABRIK) — to make the joining points touch**.
+- **3D hands.** Two skinned hands with sleeves (not a skeleton), animated between letter poses, using **geometric transformations — rigid alignment (Kabsch) and finger inverse kinematics (FABRIK) — to make the joining points touch**.
 - **Web app.** A designed single-page site (light and dark themes) with this manual built in, served by a small Python backend. Everything runs on your computer.
 
 ## Results at a glance

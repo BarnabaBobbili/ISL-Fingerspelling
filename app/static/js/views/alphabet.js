@@ -29,7 +29,7 @@ async function choose(L) {
     $('ad-contacts').textContent = p.contacts.length ? `${p.contacts.length} joint pair${p.contacts.length > 1 ? 's' : ''} touch` : 'none needed';
     $('ad-samples').textContent = p.n_candidates;
     if (!detail) { detail = new Avatar($('alpha-canvas')); await detail.load(); }
-    detail.start(); detail.stop(false); detail.setView('hands'); detail.showLetter(L);
+    detail.start(); detail.stop(false); detail.setView('close'); detail.showLetter(L);
     $('alpha-detail').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 

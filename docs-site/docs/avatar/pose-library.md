@@ -34,7 +34,7 @@ flowchart LR
 |---|---|
 | C, I, L, O, U, V | A, B, D, E, F, G, H, J, K, M, N, P, Q, R, S, T, W, X, Y, Z |
 
-One-handed letters are drawn with the dominant hand on the right and the other hand resting.
+One-handed letters are drawn with a single, centred hand; the other hand waits below the frame.
 
 ## Output format (`poses.json`)
 
@@ -46,6 +46,7 @@ One-handed letters are drawn with the dominant hand on the right and the other h
           "raw":     [[21×3], [21×3]],     // regularised, before contact alignment
           "touched": [[21×3], [21×3]],     // after alignment
           "contacts": [{"a": 8, "b": 8, "target": 0.16, "gap_raw": 0.70, "gap_touched": 0.001}],
+          "chir": [1, -1],                 // handedness each hand's landmarks show (+1 right-type, -1 left-type)
           "n_candidates": 500},
     ...
     "_rest": {...}                          // relaxed pose used between words
