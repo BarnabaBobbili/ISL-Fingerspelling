@@ -57,6 +57,8 @@ def main():
             e["keys"] = [[r4(x) for x in k] for k in r["keys"]]
         d["letters"][L] = e
         print(L, "ok", "keys" if r["keys"] else "", [c["gap_touched"] for c in contacts])
+    if a.all:                                              # the full authored alphabet: only C is one-handed
+        d["meta"]["one_handed"] = sorted(L for L in letters if d["letters"][L]["hands"] == 1)
     OUT.write_text(json.dumps(d, separators=(",", ":")))
     print("saved", OUT)
 

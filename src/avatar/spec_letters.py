@@ -51,7 +51,7 @@ def shape(kind, **kw):
         f = dict(pinky=CURL)
         return hand_local(f, thumb_tip=(-0.30, 0.62, 0.52))
     if kind == "vee":
-        f = dict(index=(8, 0, 0, 0), middle=(-8, 0, 0, 0), ring=CURL, pinky=CURL)
+        f = dict(index=(14, 0, 0, 0), middle=(-14, 0, 0, 0), ring=CURL, pinky=CURL)
         return hand_local(f, thumb_tip=(-0.05, 0.72, 0.60))
     if kind == "hook":           # hooked index, rest curled
         f = dict(index=HOOK, middle=CURL, ring=CURL, pinky=CURL)
@@ -69,10 +69,10 @@ def shape(kind, **kw):
         return hand_local(f, thumb_tip=Q[8])
     if kind == "vee_thumb":      # thumb out + index up (left hand of Y)
         f = dict(middle=CURL, ring=CURL, pinky=CURL)
-        return hand_local(f, thumb=THUMB_OUT)
+        return hand_local(f, thumb=[(0.85, 0.50, 0.15), (0.92, 0.35, 0.15), (0.95, 0.25, 0.12)])
     if kind == "cee":
-        f = {n: (0, 30, 35, 25) for n in ("index", "middle", "ring", "pinky")}
-        return hand_local(f, thumb_tip=(0.55, 0.95, 0.62))
+        f = {n: (0, 42, 46, 32) for n in ("index", "middle", "ring", "pinky")}
+        return hand_local(f, thumb_tip=(0.10, 0.62, 0.95))
     raise KeyError(kind)
 
 
@@ -135,12 +135,12 @@ def _vowel(b_joint):
     return A, B, [dict(a=8, b=b_joint)]
 
 
-def _flat_press(kind, tips, hook=False):
+def _flat_press(kind, tips, hook=False, palm_to_viewer=False):
     """flat base; the right fingers point at the left palm and touch it with `tips` (joint ids)."""
     B = _base("flat")
     n = RIGHT_X                                    # left palm normal
     pc = palm_point(B, n)
-    A = R_(shape(kind), LEFT_X, DOWN, V(0, 0, 0))
+    A = R_(shape(kind), LEFT_X, FWD if palm_to_viewer else DOWN, V(0, 0, 0))
     mid = tips[len(tips) // 2]
     A = place_contact(A, mid, B, 9, RIGHT_X)       # first touch the palm region around the middle MCP
     # slide to the palm centre
@@ -209,8 +209,10 @@ def author(L):
         pc = palm_point(B, RIGHT_X)
         A = A + (pc + RIGHT_X * 0.08 - A[7])
         contacts = []
-    elif L in "MNV":
-        A, B, contacts = _flat_press({"M": "three", "N": "two", "V": "vee"}[L], {"M": (8, 12, 16), "N": (8, 12), "V": (8, 12)}[L])
+    elif L in "MN":
+        A, B, contacts = _flat_press({"M": "three", "N": "two"}[L], {"M": (8, 12, 16), "N": (8, 12)}[L])
+    elif L == "V":
+        A, B, contacts = _flat_press("vee", (8, 12), palm_to_viewer=True)
     elif L == "P":
         B = L_(shape("point"), UP, RIGHT_X, BW)
         A = ring_pose("R", V(-1.2, -0.9, 0.2))
@@ -233,10 +235,12 @@ def author(L):
         A = place_contact(A, 20, B, 20, V(-1, 0, 0))
         contacts = [dict(a=20, b=20)]
     elif L == "T":
+        # left hand open, palm toward the right hand; the right index rests against the lower edge of the left palm / wrist
         B = _base("open")
-        A = R_(shape("point"), UP, LEFT_X, V(0, 0, 0))
-        A = place_contact(A, 8, B, 0, V(-1, 0.0, 0.0))
-        contacts = [dict(a=8, b=0)]
+        A = R_(shape("point"), V(0.85, 0.5, 0.0), DOWN, V(0, 0, 0))
+        tgt = (B[0] * 0.6 + B[9] * 0.4) + RIGHT_X * (RADIUS[8] + 0.10)
+        A = A + (tgt - A[8])
+        contacts = [dict(a=8, b=-1, pt=tgt.tolist())]
     elif L == "W":
         A = R_(shape("open"), V(0.45, 1, 0), LEFT_X, V(-0.7, -0.9, 0.0))
         B = L_(shape("open"), V(-0.45, 1, 0), RIGHT_X, V(0.7, -0.9, 0.1))
@@ -246,10 +250,12 @@ def author(L):
         B = L_(shape("point"), V(-0.6, 1, 0), FWD, V(0.8, -0.9, -0.12))
         contacts = []
     elif L == "Y":
-        B = L_(shape("vee_thumb"), UP, RIGHT_X, BW)
-        A = R_(shape("point"), UP, LEFT_X, V(0, 0, 0))
-        A = A + ((B[4] + B[8]) / 2 + V(-0.15, 0, 0) - A[8])
-        contacts = []
+        # left thumb and index make a V (palm toward the viewer so the V opens in the picture plane); the right index is the stem
+        B = L_(shape("vee_thumb"), UP, FWD, V(1.1, -0.9, 0))
+        A = R_(shape("point"), V(0.30, 1.0, 0.0), FWD, V(0, 0, 0))
+        web = (B[1] + B[5]) / 2 + V(0, 0.15, 0.1)
+        A = A + (web - A[8])
+        contacts = [dict(a=8, b=-1, pt=web.tolist())]
     elif L == "Z":
         B = _base("flat")
         pc = palm_point(B, RIGHT_X)

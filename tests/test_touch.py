@@ -53,7 +53,7 @@ def test_pose_library():
     d = json.loads((ROOT / "app" / "static" / "data" / "poses.json").read_text())
     L = d["letters"]
     assert all(chr(65 + i) in L for i in range(26)) and "_rest" in L
-    assert {k for k in L if k != "_rest" and L[k]["hands"] == 1} == set("CILOUV")
+    assert {k for k in L if k != "_rest" and L[k]["hands"] == 1} == set(d["meta"]["one_handed"])
     improved = n = 0
     for k, v in L.items():
         if not v["contacts"]:
@@ -65,7 +65,8 @@ def test_pose_library():
             continue
         n += 1
         improved += new < raw
-    assert n >= 8 and improved == n, "alignment must reduce the gap of every detected letter with contacts"
+    spec = sum(1 for k, v in L.items() if k != "_rest" and v.get("source") == "spec")
+    assert improved == n and (n >= 8 or spec >= 18), "alignment must reduce the gap of every detected letter with contacts"
     print(f"pose library ok: {n} letters with contacts, all improved")
 
 

@@ -5,7 +5,7 @@ title: Pose library
 
 # Pose library
 
-Most letters are **derived from the real data**, so the 3D hands sign what the recogniser was trained to recognise. The letters in which the hands overlap strongly (G, H, J, M, P, Q, R, S) are the exception: the detector is unreliable there, so they are [authored](#authored-letters) from a description of the sign.
+On this branch **all 26 letters are [authored](#authored-letters)** from a written description of the manual alphabet (the right hand is the active hand, the left hand the base). Detected landmarks are unreliable wherever the hands overlap, which is where most letters are formed, so the poses are not measured from photographs. The recogniser itself is still trained on the real data; the 3D hands therefore show the sign as described, not as an average of the training images.
 
 ```bash
 python -m src.avatar.build_poses      # → app/static/data/poses.json  and  results/avatar_contacts.csv
@@ -30,10 +30,11 @@ flowchart LR
 
 ## Authored letters
 
-Landmarks detected in photographs are unreliable where the hands overlap, and that is exactly where most ISL letters are formed: fingers collapse, a hand is missing, or the left and right hand are confused. For the letters G, H, J, M, P, Q, R and S the pose is therefore written down instead of measured:
+Landmarks detected in photographs are unreliable where the hands overlap, and that is exactly where most ISL letters are formed: fingers collapse, a hand is missing, or the left and right hand are confused. Every pose is therefore written down instead of measured:
 
 ```bash
-python -m src.avatar.build_spec_poses --letters GHJMPQRS      # → app/static/data/poses.json ("source": "spec")
+python -m src.avatar.build_spec_poses --all                   # → app/static/data/poses.json ("source": "spec")
+python -m src.avatar.build_spec_poses --letters GHJMPQRS      # or only some letters
 ```
 
 - `src/avatar/handmodel.py` is a small articulated hand: finger curl angles, spread, a thumb defined by segment directions or by a target for its tip (FABRIK), the palm direction and the finger direction. It returns the same 21 landmarks as the detector, so the renderer, the contact markers and the pose file are unchanged. Handedness follows from the geometry (right hand +1, left hand −1) and is asserted for every pose.
@@ -46,7 +47,7 @@ python -m src.avatar.build_spec_poses --letters GHJMPQRS      # → app/static/d
 |---|---|
 | C, I, L, O, U, V | A, B, D, E, F, G, H, J, K, M, N, P, Q, R, S, T, W, X, Y, Z |
 
-One-handed letters are drawn with a single, centred hand; the other hand waits below the frame.
+In the authored alphabet only **C** is one-handed (a single, centred hand; the other hand waits below the frame). The vowels A, E, I, O, U are formed by touching a different fingertip of the left hand with the right index, and L and V rest the right fingers on the left palm, so they are two-handed here.
 
 ## Output format (`poses.json`)
 

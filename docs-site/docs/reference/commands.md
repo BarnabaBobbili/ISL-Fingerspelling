@@ -64,7 +64,7 @@ python src/training/select_best_cont.py --tag conformer_stream  # deploy it (cho
 
 ```bash
 ISL_V2_DIR=static_v2r python -m src.avatar.build_poses         # → app/static/data/poses.json, results/avatar_contacts.csv
-python -m src.avatar.build_spec_poses --letters GHJMPQRS        # replace letters by authored poses (see Pose library)
+python -m src.avatar.build_spec_poses --all                      # authored poses for all 26 letters (see Pose library)
 ```
 
 ## Tests
