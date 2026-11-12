@@ -19,6 +19,7 @@ Endpoints
 
 import argparse
 import json
+import mimetypes
 import re
 import shutil
 import sys
@@ -45,6 +46,11 @@ from src.pipeline.hands import HandTracker  # noqa: E402
 from src.pipeline.classifier import StaticClassifier  # noqa: E402
 from src.pipeline.hold import Recognizer  # noqa: E402
 from src.pipeline.video import analyze_static  # noqa: E402
+
+# Windows registries often map these wrongly; browsers refuse ES modules / WASM with a wrong type
+mimetypes.add_type("text/javascript", ".mjs")
+mimetypes.add_type("text/javascript", ".js")
+mimetypes.add_type("application/wasm", ".wasm")
 
 STATIC = Path(__file__).parent / "static"
 JOBS_DIR = ROOT / "results" / "web_jobs"
@@ -111,10 +117,22 @@ async def lifespan(_app):
 # ─────────────────────────────────────────────────────────────────────────────
 # Live webcam
 # ─────────────────────────────────────────────────────────────────────────────
-def _process_live(frame, rcg, session, mode, t, n):
+def _rec_from_packet(msg: dict) -> dict:
+    """landmark packet from the in-browser tracker -> the same record HandTracker produces."""
+    rec = {"lm": np.zeros((2, 21, 3), np.float32), "present": np.zeros(2, bool),
+           "wh": np.array([int(msg.get("w", 640)), int(msg.get("h", 480))], np.int32), "score": np.zeros(2, np.float32)}
+    hands = sorted((np.asarray(h, np.float32) for h in msg.get("hands", [])[:2]), key=lambda a: a[0, 0])
+    for i, arr in enumerate(hands):
+        if arr.shape == (21, 3):
+            rec["lm"][i] = arr
+            rec["present"][i] = True
+    return rec
+
+
+def _process_rec(rec, rcg, session, mode, t, n, t_start=None):
+    """recognition step for one frame's landmarks (from the server tracker or the browser)."""
     eng = Engine.load()
     t0 = time.time()
-    rec = (eng.tracker if mode == "continuous" else eng.tracker_static)(frame)
     hands = [[[round(float(x), 4), round(float(y), 4)] for x, y, _ in rec["lm"][i]]
              for i in range(2) if rec["present"][i]]
     if mode == "continuous" and session is not None:
@@ -125,6 +143,17 @@ def _process_live(frame, rcg, session, mode, t, n):
     out["hands"] = hands
     out["ms"] = round((time.time() - t0) * 1000, 1)
     out["mode"] = mode
+    out["seq"] = n
+    return out
+
+
+def _process_live(frame, rcg, session, mode, t, n):
+    """JPEG fallback path: detect hands on the server, then recognise."""
+    eng = Engine.load()
+    t0 = time.time()
+    rec = (eng.tracker if mode == "continuous" else eng.tracker_static)(frame)
+    out = _process_rec(rec, rcg, session, mode, t, n)
+    out["ms"] = round((time.time() - t0) * 1000, 1)
     return out
 
 
@@ -155,7 +184,14 @@ async def ws_live(ws: WebSocket):
                 n += 1
                 await ws.send_json(jsonable(out))
             elif msg.get("text"):
-                cmd = json.loads(msg["text"]).get("cmd")
+                data = json.loads(msg["text"])
+                if data.get("type") == "lm":                     # landmarks from the in-browser tracker
+                    rec = _rec_from_packet(data)
+                    out = await run_in_threadpool(_process_rec, rec, rcg, session, mode, float(data.get("t", 0.0)), n)
+                    n += 1
+                    await ws.send_json(jsonable(out))
+                    continue
+                cmd = data.get("cmd")
                 target = session if session is not None else rcg
                 if cmd == "reset":
                     target.reset()
@@ -249,6 +285,7 @@ async def info(request: Request):
         "characters": [chr(65 + i) for i in range(26)],
         "one_handed": list("CILOUV"),
         "static_model": "DH-GAT v2",
+        "static_recover": bool(getattr(Engine.clf, "recover", False)),
         "continuous_model": getattr(Engine.cont, "name", None) if cont else None,
         "continuous_available": cont or (ROOT / "checkpoints" / "cont_best.pt").exists(),
         "ready": Engine.tracker is not None,
@@ -262,19 +299,30 @@ async def text2sign(request: Request):
     return JSONResponse({"text": clean, "letters": [c for c in clean if c != " "], "words": clean.split()})
 
 
+async def model_file(request: Request):
+    """the MediaPipe hand model, shared by the server tracker and the in-browser tracker."""
+    return FileResponse(ROOT / "hand_landmarker.task", media_type="application/octet-stream",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
 async def index(request: Request):
     return FileResponse(STATIC / "index.html")
 
+
+DOCS_BUILD = Path(__file__).parent / "docs_build"          # Docusaurus output (npm run build:app in docs-site)
+_docs_routes = [Mount("/docs", StaticFiles(directory=DOCS_BUILD, html=True), name="docs")] if DOCS_BUILD.exists() else []
 
 app = Starlette(
     lifespan=lifespan,
     routes=[
         Route("/", index),
         Route("/api/info", info),
+        Route("/model/hand_landmarker.task", model_file),
         Route("/api/text2sign", text2sign, methods=["POST"]),
         Route("/api/video", upload_video, methods=["POST"]),
         Route("/api/job/{job_id}", job_status),
         WebSocketRoute("/ws/live", ws_live),
+        *_docs_routes,
         Mount("/static", StaticFiles(directory=STATIC), name="static"),
         Mount("/jobs", StaticFiles(directory=JOBS_DIR), name="jobs"),
     ],
