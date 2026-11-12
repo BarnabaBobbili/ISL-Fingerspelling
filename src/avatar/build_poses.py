@@ -53,6 +53,27 @@ def shared_frame(px, present):
     return g, hs / np.maximum(mean_hs[:, None], 1e-6)
 
 
+def handedness_sign(P):
+    """+1 / -1: sign of the triple product (index MCP, pinky MCP, thumb MCP about the wrist).
+    It is the geometric signature of a right (+) vs left (-) hand and is orientation-invariant."""
+    u, v, t = P[5] - P[0], P[17] - P[0], P[2] - P[0]
+    return 1 if float(np.cross(u, v) @ t) > 0 else -1
+
+
+def fix_handedness(P, want):
+    """
+    MediaPipe's depth (z) is only an estimate, so the geometry of a hand sometimes implies the
+    wrong handedness for its slot (slot 0 = viewer-left hand = a right hand, slot 1 = a left hand).
+    When that happens the hand is MIRRORED across its own palm plane (through the wrist): a valid
+    hand of the opposite chirality with the same finger shapes. Returns (P, was_fixed).
+    """
+    if handedness_sign(P) == want:
+        return P, False
+    n = np.cross(P[5] - P[0], P[17] - P[0])
+    n = n / (np.linalg.norm(n) + 1e-9)
+    return P - 2.0 * ((P - P[0]) @ n)[:, None] * n[None, :], True
+
+
 def to_three(P):
     """image coords (y down, z toward camera = negative) -> three.js (y up, z toward viewer)."""
     Q = P.copy()
@@ -100,7 +121,12 @@ def main():
         dist = np.linalg.norm(feat[:, None] - feat[None], axis=-1).sum(1)
         ref = idx[int(dist.argmin())]
 
-        H = [touch.regularise_bones(g[ref, h], lengths * hsr[ref, h]) for h in hands]
+        fixed = []
+        H = []
+        for h in hands:
+            P, was = fix_handedness(g[ref, h], +1 if h == 0 else -1)      # slot 0 = right hand, slot 1 = left hand
+            fixed.append(bool(was))
+            H.append(touch.regularise_bones(P, lengths * hsr[ref, h]))
         contacts, gap_raw, gap_new = [], [], []
         if two:
             A, B = H
@@ -133,6 +159,7 @@ def main():
                           "gap_raw": round(gr, 4), "gap_touched": round(gn, 4)}
                          for (i, j), gr, gn in zip(contacts, gap_raw, gap_new)],
             "n_candidates": int(len(idx)),
+            "mirrored": fixed,
         }
         rows.append([L, 2 if two else 1, len(idx), len(contacts),
                      round(float(np.mean(np.abs(gap_raw))), 4) if gap_raw else "",

@@ -1,21 +1,37 @@
-/* 3D ISL avatar: solid two-hand model driven by the pose library (poses.json).
+/* The 3D signer.
  *
- *  - HandMesh      tapered fingers, rounded palm, forearm + sleeve (not a skeleton)
- *  - blendPose     joint interpolation followed by bone-length re-projection (FK), so
- *                  fingers never shrink or stretch while moving between letters
- *  - Avatar        scene, lighting, orbit camera, letter timeline, contact markers
+ *  - Body (signer/body.js)   upper-body figure in a kurta, arms solved by two-bone IK
+ *  - HandRig (signer/rig.js) a skinned hand mesh driven by the 21 landmarks of each hand
+ *  - blendPose               joint interpolation + bone-length re-projection (forward kinematics),
+ *                            so fingers never shrink or stretch while moving between letters
+ *  - Avatar                  scene, lighting, camera presets, the letter timeline, contact markers
+ *
+ * Slot 0 is the signer's RIGHT hand (the viewer's left); slot 1 the left hand. One-handed letters are
+ * signed with the right hand; the other arm hangs relaxed at the side.
  */
 import * as THREE from 'three';
 import { OrbitControls } from '/static/vendor/OrbitControls.js';
 import { RoomEnvironment } from '/static/vendor/RoomEnvironment.js';
+import { HandRig, loadHandModel } from '/static/js/signer/rig.js';
+import { Body } from '/static/js/signer/body.js';
 
 const PARENT = [-1, 0, 1, 2, 3, 0, 5, 6, 7, 0, 9, 10, 11, 0, 13, 14, 15, 0, 17, 18, 19];
-const PERIM = [0, 1, 2, 5, 9, 13, 17];                 // palm outline (wrist -> thumb -> pinky)
-const SKINS = { light: 0xf0c6a4, medium: 0xd29a72, deep: 0x8a5738 };
+const SKINS = { light: 0xf0c6a4, medium: 0xcf9870, deep: 0x8a5738 };
 const V = (x, y, z) => new THREE.Vector3(x, y, z);
-
 const ease = t => t * t * (3 - 2 * t);
 const flat = pts => Float32Array.from(pts.flat());
+
+/* where the signing space sits in front of the chest, and where a resting hand hangs */
+const SPACE_TWO = [0, -3.2, 2.5];
+const SPACE_ONE = [-1.6, -2.7, 2.7];
+const HANG = [[-2.55, -5.9, 0.9], [2.55, -5.9, 0.9]];
+
+const VIEWS = {   // position, target, fov, head visible
+    front: { p: [0, -0.8, 19.6], t: [0, -1.7, 0], fov: 36, head: true },
+    hands: { p: [0, -2.6, 11.0], t: [0, -3.4, 1.8], fov: 36, head: true },
+    thumb: { p: [-0.5, -2.6, 12.2], t: [-0.5, -3.2, 1.8], fov: 36, head: true },
+    signer: { p: [0, 2.5, 1.8], t: [0, -3.4, 3.0], fov: 60, head: false },
+};
 
 /* ---------------------------------------------------------------- pose maths */
 export function blendPose(A, B, t) {
@@ -38,81 +54,11 @@ export function blendPose(A, B, t) {
     return out;
 }
 const shift = (P, o) => { const Q = new Float32Array(63); for (let i = 0; i < 63; i++) Q[i] = P[i] + o[i % 3]; return Q; };
-
-/* ------------------------------------------------------------------ HandMesh */
-class HandMesh {
-    constructor(scene, skin, sleeve, radius) {
-        this.group = new THREE.Group(); scene.add(this.group);
-        const sph = new THREE.SphereGeometry(1, 28, 18);
-        this.joints = radius.map((r, j) => {
-            const m = new THREE.Mesh(sph, skin);
-            m.scale.setScalar(j === 0 ? 0.24 : r * 1.12); m.castShadow = m.receiveShadow = true;
-            this.group.add(m); return m;
-        });
-        this.bones = PARENT.map((p, j) => {
-            if (j === 0 || p === 0) return null;                 // wrist->MCP spans are covered by the palm
-            const m = new THREE.Mesh(new THREE.CylinderGeometry(radius[j] * 1.12, radius[p] * 1.12, 1, 24, 1, true), skin);
-            m.castShadow = m.receiveShadow = true; this.group.add(m); return m;
-        });
-        // palm: two rings (top / bottom) + two domed centres, shared vertices -> rounded edges
-        const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(16 * 3), 3));
-        const idx = [], n = PERIM.length;
-        for (let k = 0; k < n; k++) {
-            const a = k, b = (k + 1) % n, c = n + (k + 1) % n, d = n + k;
-            idx.push(14, a, b, 15, c, d, a, d, c, a, c, b);
-        }
-        g.setIndex(idx);
-        this.palmGeo = g;
-        this.palm = new THREE.Mesh(g, skin);
-        this.palm.castShadow = this.palm.receiveShadow = true; this.palm.frustumCulled = false;
-        this.group.add(this.palm);
-        // forearm (skin) + sleeve (cloth) + cuff
-        const cyl = (r0, r1, mat) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(r1, r0, 1, 32, 1), mat); m.castShadow = true; m.receiveShadow = true; this.group.add(m); return m; };
-        this.arm = cyl(0.33, 0.37, skin);
-        this.sleeve = cyl(0.52, 0.66, sleeve);
-        this.cuff = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.06, 14, 40), sleeve);
-        this.cuff.castShadow = true; this.group.add(this.cuff);
-        this.up = V(0, 1, 0);
-    }
-
-    setSkin(skin) { this.joints.forEach(m => m.material = skin); this.bones.forEach(m => m && (m.material = skin)); this.palm.material = skin; this.arm.material = skin; }
-
-    update(P) {
-        const p = j => V(P[3 * j], P[3 * j + 1], P[3 * j + 2]);
-        for (let j = 0; j < 21; j++) this.joints[j].position.set(P[3 * j], P[3 * j + 1], P[3 * j + 2]);
-        for (let j = 1; j < 21; j++) {
-            const m = this.bones[j]; if (!m) continue;
-            const a = p(PARENT[j]), b = p(j), d = b.clone().sub(a), len = d.length() || 1e-4;
-            m.position.copy(a).addScaledVector(d, 0.5);
-            m.quaternion.setFromUnitVectors(this.up, d.divideScalar(len));   // +Y end = child (top radius)
-            m.scale.set(1, len, 1);
-        }
-        // palm
-        const c = V(0, 0, 0); PERIM.forEach(j => c.add(p(j))); c.divideScalar(PERIM.length);
-        const n = new THREE.Vector3().crossVectors(p(5).sub(p(0)), p(17).sub(p(0))).normalize();
-        const pos = this.palmGeo.attributes.position, T = 0.17;
-        PERIM.forEach((j, k) => {
-            const q = p(j); q.addScaledVector(q.clone().sub(c), 0.16);   // push the outline outward a little
-            const t = q.clone().addScaledVector(n, T), b = q.clone().addScaledVector(n, -T);
-            pos.setXYZ(k, t.x, t.y, t.z); pos.setXYZ(PERIM.length + k, b.x, b.y, b.z);
-        });
-        const tc = c.clone().addScaledVector(n, T * 1.35), bc = c.clone().addScaledVector(n, -T * 1.35);
-        pos.setXYZ(14, tc.x, tc.y, tc.z); pos.setXYZ(15, bc.x, bc.y, bc.z);
-        pos.needsUpdate = true; this.palmGeo.computeVertexNormals();
-        // forearm points away from the fingers
-        const mc = V(0, 0, 0); [5, 9, 13, 17].forEach(j => mc.add(p(j))); mc.divideScalar(4);
-        const w = p(0), dir = w.clone().sub(mc).normalize();
-        const place = (mesh, from, to) => {
-            mesh.position.copy(w).addScaledVector(dir, (from + to) / 2);
-            mesh.quaternion.setFromUnitVectors(this.up, dir); mesh.scale.set(1, to - from, 1);
-        };
-        place(this.arm, 0.0, 0.95);
-        place(this.sleeve, 0.85, 9.0);
-        this.cuff.position.copy(w).addScaledVector(dir, 0.86);
-        this.cuff.quaternion.setFromUnitVectors(V(0, 0, 1), dir);
-    }
-}
+const hang = (P, wrist) => {                          // rotate 180° about z (fingers point down), put the wrist at `wrist`
+    const Q = new Float32Array(63);
+    for (let j = 0; j < 21; j++) { Q[3 * j] = -(P[3 * j] - P[0]) + wrist[0]; Q[3 * j + 1] = -(P[3 * j + 1] - P[1]) + wrist[1]; Q[3 * j + 2] = P[3 * j + 2] - P[2] + wrist[2]; }
+    return Q;
+};
 
 /* -------------------------------------------------------------------- Avatar */
 export class Avatar {
@@ -121,65 +67,78 @@ export class Avatar {
         this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: !opts.background, preserveDrawingBuffer: !!opts.preserve });
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
         this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.05;
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.0;
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
         this.scene = new THREE.Scene();
         if (opts.background) this.scene.background = new THREE.Color(opts.background);
         const pm = new THREE.PMREMGenerator(this.renderer);
         this.scene.environment = pm.fromScene(new RoomEnvironment(), 0.04).texture;
-        this.camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
-        this.camera.position.set(0, 0.5, 8.4);
-        const key = new THREE.DirectionalLight(0xfff2e6, 2.6); key.position.set(4, 7, 8); key.castShadow = true;
+        this.camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+        const key = new THREE.DirectionalLight(0xfff1e0, 2.4); key.position.set(5, 8, 10); key.castShadow = true;
         key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 5; key.shadow.bias = -0.0004;
-        Object.assign(key.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 });
+        Object.assign(key.shadow.camera, { left: -9, right: 9, top: 9, bottom: -9, near: 1, far: 40 });
         this.scene.add(key);
-        const rim = new THREE.DirectionalLight(0x8fb4ff, 1.3); rim.position.set(-6, 3, -5); this.scene.add(rim);
-        this.scene.add(new THREE.HemisphereLight(0xcfe0ff, 0x241a2e, 0.55));
+        const rim = new THREE.DirectionalLight(0x9fc4ff, 1.1); rim.position.set(-7, 4, -6); this.scene.add(rim);
+        this.scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x2a2030, 0.5));
         if (!opts.noControls) {
             this.controls = new OrbitControls(this.camera, canvas);
-            this.controls.target.set(0, -0.7, 0); this.controls.enableDamping = true; this.controls.minDistance = 4; this.controls.maxDistance = 22;
-            this.controls.maxPolarAngle = Math.PI * 0.62; this.controls.update();
-        } else this.camera.lookAt(0, -0.7, 0);
-
-        this.skin = new THREE.MeshStandardMaterial({ color: SKINS.medium, roughness: 0.52, metalness: 0.0, envMapIntensity: 0.9 });
-        this.sleeve = new THREE.MeshStandardMaterial({ color: 0x2c3a6b, roughness: 0.85, metalness: 0.0 });
+            this.controls.enableDamping = true; this.controls.minDistance = 3; this.controls.maxDistance = 26;
+            this.controls.maxPolarAngle = Math.PI * 0.62; this.controls.enablePan = false;
+        }
+        this.mats = {
+            skin: new THREE.MeshStandardMaterial({ color: SKINS.medium, roughness: 0.5, metalness: 0.0, envMapIntensity: 0.9 }),
+            cloth: new THREE.MeshStandardMaterial({ color: 0x0e5a5f, roughness: 0.85, metalness: 0.0 }),
+            trim: new THREE.MeshStandardMaterial({ color: 0xd9962a, roughness: 0.6, metalness: 0.1 }),
+            hair: new THREE.MeshStandardMaterial({ color: 0x15110f, roughness: 0.55, metalness: 0.0 }),
+        };
         this.useTouched = true; this.showSkeleton = false; this.showMarkers = true;
-        this.cur = null; this.seq = null; this.t0 = 0; this.speed = 1;
-        this.marks = [];
-        this.running = false;
+        this.cur = null; this.seq = null; this.speed = 1; this.marks = []; this.running = false;
+        this.view = 'front';
     }
 
     async load(url = '/static/data/poses.json') {
-        const d = await (await fetch(url)).json();
+        const [d, left, right] = await Promise.all([fetch(url).then(r => r.json()), loadHandModel('left'), loadHandModel('right')]);
         this.poses = d.letters; this.meta = d.meta;
-        this.hands = [0, 1].map(() => new HandMesh(this.scene, this.skin, this.sleeve, this.meta.radius));
-        // skeleton overlay
+        const rigs = [new HandRig(left, this.mats.skin), new HandRig(right, this.mats.skin)];
+        const rightType = rigs.find(r => r.handed > 0) || rigs[1], leftType = rigs.find(r => r !== rightType);
+        this.rigs = [rightType, leftType];                       // slot 0 = right-type hand, slot 1 = left-type hand
+        this.rigs.forEach(r => this.scene.add(r.root));
+        this.body = new Body(this.scene, this.mats);
         const mk = () => { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(40 * 6), 3));
-            return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x5eead4, depthTest: false, transparent: true })); };
+            return new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0x62beb5, depthTest: false, transparent: true })); };
         this.skel = [mk(), mk()]; this.skel.forEach(s => { s.visible = false; s.renderOrder = 10; s.frustumCulled = false; this.scene.add(s); });
         const mg = new THREE.SphereGeometry(0.075, 16, 12);
         for (let i = 0; i < 4; i++) {
-            const m = new THREE.Mesh(mg, new THREE.MeshBasicMaterial({ color: 0xfbbf24, transparent: true, opacity: 0.95, depthTest: false }));
+            const m = new THREE.Mesh(mg, new THREE.MeshBasicMaterial({ color: 0xefb03a, transparent: true, opacity: 0.95, depthTest: false }));
             m.visible = false; m.renderOrder = 11; this.scene.add(m); this.marks.push(m);
         }
+        this.setView('front');
         this.cur = this.restPose();
         this.apply(this.cur);
         return this;
     }
 
-    setSkin(name) { this.skin.color.setHex(SKINS[name] || SKINS.medium); }
+    setSkin(name) { this.mats.skin.color.setHex(SKINS[name] || SKINS.medium); }
 
-    /* --- poses --- */
+    /** camera presets: 'front' (whole signer) | 'hands' (close-up) | 'signer' (the signer's own point of view) */
+    setView(name) {
+        const v = VIEWS[name] || VIEWS.front; this.view = name;
+        this.camera.position.set(...v.p); this.camera.fov = v.fov; this.camera.updateProjectionMatrix();
+        if (this.controls) { this.controls.target.set(...v.t); this.controls.update(); } else this.camera.lookAt(...v.t);
+        if (this.body) this.body.setHeadVisible(v.head);
+    }
+
+    /* --- poses (world coordinates; slot 0 = signer's right hand) --- */
     restPose() {
-        const r = this.poses._rest.raw;
-        return [shift(flat(r[0]), [-2.6, -2.9, 0]), shift(flat(r[1]), [2.6, -2.9, 0])];
+        const r = this.poses._rest.raw;                         // [left-type, right-type] relative to the wrist
+        return [hang(flat(r[1]), HANG[0]), hang(flat(r[0]), HANG[1])];
     }
     info(letter) { return this.poses[letter]; }
     poseFor(letter) {
         const L = this.poses[letter]; if (!L) return this.restPose();
         const arr = this.useTouched ? L.touched : L.raw;
-        if (L.hands === 2) return [shift(flat(arr[0]), [0, -0.4, 0]), shift(flat(arr[1]), [0, -0.4, 0])];
-        return [this.restPose()[0], shift(flat(arr[0]), [1.0, -0.6, 0])];      // one-handed: dominant hand on the right
+        if (L.hands === 2) return [shift(flat(arr[0]), SPACE_TWO), shift(flat(arr[1]), SPACE_TWO)];
+        return [shift(flat(arr[0]), SPACE_ONE), this.restPose()[1]];       // one hand signs, the other hangs at the side
     }
     contactsFor(letter, pose) {
         const L = this.poses[letter]; if (!L || L.hands !== 2 || !this.useTouched) return [];
@@ -190,7 +149,13 @@ export class Avatar {
 
     apply(pose, marks = []) {
         this.cur = pose;
-        this.hands.forEach((h, i) => h.update(pose[i]));
+        const wr = [], fw = [];
+        pose.forEach((P, i) => {
+            this.rigs[i].pose(P);
+            wr.push(V(P[0], P[1], P[2]));
+            fw.push(V(P[27] - P[0], P[28] - P[1], P[29] - P[2]).normalize());
+        });
+        this.body.update(wr, fw);
         this.skel.forEach((s, i) => {
             s.visible = this.showSkeleton; if (!s.visible) return;
             const a = s.geometry.attributes.position; let k = 0;
@@ -206,16 +171,16 @@ export class Avatar {
         const clean = text.toUpperCase().replace(/[^A-Z ]/g, '');
         const items = []; let prev = null;
         [...clean].forEach((ch, i) => {
-            if (ch === ' ') { items.push({ ch, pose: rest, trans: 0.55, hold: 0.35, idx: i }); prev = null; return; }
+            if (ch === ' ') { items.push({ ch, pose: rest, trans: 0.6, hold: 0.3, idx: i }); prev = null; return; }
             const target = this.poseFor(ch);
             if (prev === ch) {        // repeated letter: relax slightly toward rest so the repeat is visible
                 const lift = [blendPose(target[0], rest[0], 0.28), blendPose(target[1], rest[1], 0.28)];
                 items.push({ ch: null, pose: lift, trans: 0.28, hold: 0.0, idx: i, lift: true });
             }
-            items.push({ ch, pose: target, trans: 0.5, hold: 0.85, idx: i });
+            items.push({ ch, pose: target, trans: 0.55, hold: 0.85, idx: i });
             prev = ch;
         });
-        items.push({ ch: null, pose: rest, trans: 0.7, hold: 0, idx: clean.length, end: true });
+        items.push({ ch: null, pose: rest, trans: 0.8, hold: 0, idx: clean.length, end: true });
         let t = 0; items.forEach(it => { it.start = t; t += (it.trans + it.hold) / speed; it.end_t = t; });
         this.seq = { items, from: this.cur, total: t, speed, onItem, onDone, fired: -1, startTime: performance.now() / 1000 };
         this.start();
@@ -230,7 +195,7 @@ export class Avatar {
             const el = now - s.startTime;
             if (el >= s.total) { const last = s.items[s.items.length - 1]; this.apply(last.pose); const d = s.onDone; this.seq = null; d(); }
             else {
-                let k = s.items.findIndex(it => el < it.end_t);
+                const k = s.items.findIndex(it => el < it.end_t);
                 const it = s.items[k], prevPose = k === 0 ? s.from : s.items[k - 1].pose;
                 const lt = (el - it.start) * s.speed, a = Math.min(1, lt / it.trans);
                 const pose = [blendPose(prevPose[0], it.pose[0], ease(a)), blendPose(prevPose[1], it.pose[1], ease(a))];
@@ -239,9 +204,7 @@ export class Avatar {
                 if (k !== s.fired && !it.lift) { s.fired = k; s.onItem(it, k); }
             }
         }
-        // gentle idle float so the hands feel alive
-        const f = Math.sin(now * 1.4) * 0.02;
-        this.hands.forEach(h => { h.group.position.y = f; });
+        if (this.body) this.body.head.rotation.z = Math.sin(now * 0.9) * 0.025;      // gentle idle
         const pulse = 0.85 + 0.25 * Math.sin(now * 6);
         this.marks.forEach(m => m.scale.setScalar(pulse));
     }
@@ -261,9 +224,9 @@ export class Avatar {
 export async function makeThumbnails(letters, skin = 'medium') {
     const c = document.createElement('canvas'); c.width = c.height = 320; c.style.cssText = 'width:320px;height:320px;position:fixed;left:-9999px';
     document.body.appendChild(c);
-    const av = new Avatar(c, { background: 0x0e1530, noControls: true, preserve: true });
+    const av = new Avatar(c, { background: 0x1a2429, noControls: true, preserve: true });
     av.renderer.setPixelRatio(1); av.renderer.setSize(320, 320, false);
-    await av.load(); av.setSkin(skin); av.camera.aspect = 1; av.camera.position.set(0, 0.2, 7.6); av.camera.lookAt(0, -0.75, 0); av.camera.updateProjectionMatrix();
+    await av.load(); av.setSkin(skin); av.camera.aspect = 1; av.setView('thumb'); av.camera.aspect = 1; av.camera.updateProjectionMatrix();
     const out = {};
     for (const L of letters) { av.showLetter(L); av.renderer.render(av.scene, av.camera); out[L] = c.toDataURL('image/jpeg', 0.85); }
     av.renderer.dispose(); c.remove();
