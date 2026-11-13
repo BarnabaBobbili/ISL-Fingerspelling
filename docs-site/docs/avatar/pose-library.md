@@ -38,6 +38,7 @@ python -m src.avatar.build_spec_poses --letters GHJMPQRS      # → app/static/d
 
 - `src/avatar/handmodel.py` is a small articulated hand: finger curl angles, spread, a thumb defined by segment directions or by a target for its tip (FABRIK), the palm direction and the finger direction. It returns the same 21 landmarks as the detector, so the renderer, the contact markers and the pose file are unchanged. Handedness follows from the geometry (right hand +1, left hand −1) and is asserted for every pose.
 - `src/avatar/spec_letters.py` describes each letter: the base hand is the signer's left hand, the active hand the right hand; for every letter it states the hand shapes, where each palm faces and which joint touches which. Contacts are solved exactly (translation by skin radii, FABRIK for a second contact), so the markers sit on real contact points.
+- **Viewpoint.** The authored letters are shown as the signer sees them: the left (base) hand on the left of the screen, the right (active) hand on the right, palms and contacts turned a little toward the camera so that they stay readable in the Front, Close and Above views.
 - **Strokes.** H and J are movements (the flat right hand wipes along the left palm; the right index traces a J on the left palm). Their entries carry `keys`, the poses the hands pass through, and the renderer plays them during the hold.
 
 ## Hand modes

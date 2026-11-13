@@ -309,6 +309,14 @@ async def index(request: Request):
     return FileResponse(STATIC / "index.html")
 
 
+class RevalidatedFiles(StaticFiles):
+    """static files that the browser must revalidate on every load (the pose library changes between versions)."""
+    async def get_response(self, path, scope):
+        resp = await super().get_response(path, scope)
+        resp.headers["Cache-Control"] = "no-cache"
+        return resp
+
+
 DOCS_BUILD = Path(__file__).parent / "docs_build"          # Docusaurus output (npm run build:app in docs-site)
 _docs_routes = [Mount("/docs", StaticFiles(directory=DOCS_BUILD, html=True), name="docs")] if DOCS_BUILD.exists() else []
 
@@ -323,7 +331,7 @@ app = Starlette(
         Route("/api/job/{job_id}", job_status),
         WebSocketRoute("/ws/live", ws_live),
         *_docs_routes,
-        Mount("/static", StaticFiles(directory=STATIC), name="static"),
+        Mount("/static", RevalidatedFiles(directory=STATIC), name="static"),
         Mount("/jobs", StaticFiles(directory=JOBS_DIR), name="jobs"),
     ],
 )

@@ -38,9 +38,9 @@ def main():
     d = json.loads(OUT.read_text())
     for L in letters:
         r = sl.author(L)
-        A, B = r["hands"]
-        two = B is not None
-        hands = [A, B] if two else [A]
+        hands = r["hands"]
+        two = len(hands) == 2
+        H0, H1 = hands[0], hands[-1]
         for h, c in zip(hands, r["chir"]):
             assert handedness(h) == c, (L, "handedness", handedness(h), c)
         contacts = []
@@ -48,7 +48,7 @@ def main():
             if "pt" in c:
                 contacts.append({"a": c["a"], "b": c["b"], "pt": r4(c["pt"]), "target": 0.0, "gap_raw": 0.0, "gap_touched": 0.0})
             else:
-                gap = float(np.linalg.norm(A[c["a"]] - B[c["b"]]) - (RADIUS[c["a"]] + RADIUS[c["b"]]))
+                gap = float(np.linalg.norm(H0[c["a"]] - H1[c["b"]]) - (RADIUS[c["a"]] + RADIUS[c["b"]]))
                 contacts.append({"a": c["a"], "b": c["b"], "target": round(float(RADIUS[c["a"]] + RADIUS[c["b"]]), 4),
                                  "gap_raw": round(gap, 4), "gap_touched": round(gap, 4)})
         e = {"hands": 2 if two else 1, "raw": [r4(h) for h in hands], "touched": [r4(h) for h in hands],
