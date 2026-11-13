@@ -17,7 +17,7 @@ function setLetter(ch, text, idx = -1) {
     $('av-word').innerHTML = [...text].map((c, i) => `<span class="${i === idx ? 'on' : i < idx ? 'done' : ''}">${c === ' ' ? '&nbsp;' : c}</span>`).join('');
     $$('#sg-chips .chip').forEach(c => c.classList.toggle('on', +c.dataset.i === idx));
     const info = ch && av.info(ch);
-    $('av-hands').textContent = info ? (info.hands === 2 ? 'two-handed' : 'one-handed') : '';
+    $('av-hands').textContent = info ? (info.hands === 2 ? 'two-handed' : 'one-handed') + (info.source === 'spec' ? ' · written pose' : ' · detected pose') : '';
     $('av-contact').textContent = info && info.contacts.length && av.useTouched ? `${info.contacts.length} contact${info.contacts.length > 1 ? 's' : ''} aligned` : '';
 }
 

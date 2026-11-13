@@ -3,13 +3,14 @@ src/avatar/spec_letters.py
 ==========================
 The two-handed manual alphabet written as data: for every letter, how each hand is shaped, where the palm
 faces and which parts touch (see docs 'Pose library').  The base hand is the signer's LEFT hand, the active
-hand the signer's RIGHT hand; the signer faces the viewer, so the right hand is on the viewer's left (-x).
+hand the signer's RIGHT hand.  The letters are written with the signer facing the viewer and then turned half way
+round, so the viewer sees them as the signer does: left hand on the left of the screen, right hand on the right.
 
 author(letter) -> dict(
-    hands   : [right (21,3), left (21,3)]   slot 0 = right hand (viewer's left), slot 1 = left hand
-    chir    : [+1, -1]
+    hands   : [left (21,3), right (21,3)]   slot 0 = left hand (left of the screen), slot 1 = right hand; one hand: [right]
+    chir    : [-1, +1]
     contacts: list of dict(a, b, pt)         markers: joint a of slot 0 / joint b of slot 1, or a fixed point
-    keys    : None or list of [right, left] for strokes (H, J)
+    keys    : None or list of [left, right] for strokes (H, J)
 )
 """
 
@@ -18,7 +19,10 @@ import numpy as np
 from src.avatar import handmodel as hm
 from src.avatar.handmodel import CURL, EXT, HALF, HOOK, THUMB_OUT, hand_local, place_contact, reach, to_world, RADIUS, _unit
 
-YAW = np.radians(28.0)        # the whole figure is turned a little toward the viewer so palms and contacts read from the front
+import os
+YAW = np.radians(float(os.environ.get("SPEC_YAW", "208")))   # the letters are written facing the viewer; the whole figure is turned about the vertical axis
+                                                             # (180 deg = the signer's own view from behind, the left hand on the left of the screen; 208 = turned 28 deg further;
+                                                             #  a few degrees more or less shows the palms and contacts better)
 CENTER = np.array([0.1, 0.0, 0.0])
 
 BW = np.array([1.0, -0.9, 0.0])                   # left (base) wrist
@@ -123,26 +127,39 @@ def ring_pose(side, wrist, d=UP, n=FWD, kind="ring"):
     return (R_ if side == "R" else L_)(Q, d, n, wrist)
 
 
+def FD(*v):
+    """a direction given as the viewer sees the finished figure (x right, y up, z toward the viewer), as a direction in the authoring frame"""
+    return rotate_y(V(*v), -YAW, center=np.zeros(3))
+
+
+def FP(*v):
+    """the same for a point"""
+    return rotate_y(V(*v), -YAW)
+
+
+NB = _unit(FD(0.7, 0, 0.7))          # the base palm faces the active hand and is turned toward the viewer, so its fingers fan out on screen
+
+
 # ---------------------------------------------------------------- the letters
-def _base(kind, d=UP, n=RIGHT_X, wrist=BW):
-    return L_(shape(kind), d, n, wrist)
+def _base(kind, d=UP, n=None, wrist=BW):
+    return L_(shape(kind), d, NB if n is None else n, wrist)
 
 
 def _vowel(b_joint):
     B = _base("open")
-    A = R_(shape("point"), RIGHT_X * -1, DOWN, V(0, 0, 0))                    # pointing toward the base hand, palm down
-    A = place_contact(A, 8, B, b_joint, RIGHT_X)
+    A = R_(shape("point"), -NB, DOWN, V(0, 0, 0))                             # pointing toward the base hand, palm down
+    A = place_contact(A, 8, B, b_joint, NB)
     return A, B, [dict(a=8, b=b_joint)]
 
 
 def _flat_press(kind, tips, hook=False, palm_to_viewer=False):
     """flat base; the right fingers point at the left palm and touch it with `tips` (joint ids)."""
     B = _base("flat")
-    n = RIGHT_X                                    # left palm normal
+    n = NB                                         # left palm normal
     pc = palm_point(B, n)
-    A = R_(shape(kind), LEFT_X, FWD if palm_to_viewer else DOWN, V(0, 0, 0))
+    A = R_(shape(kind), -NB, FD(0, 0, 1) if palm_to_viewer else DOWN, V(0, 0, 0))
     mid = tips[len(tips) // 2]
-    A = place_contact(A, mid, B, 9, RIGHT_X)       # first touch the palm region around the middle MCP
+    A = place_contact(A, mid, B, 9, NB)       # first touch the palm region around the middle MCP
     # slide to the palm centre
     A = A + (pc + n * RADIUS[mid] - A[mid])
     return A, B, [dict(a=mid, b=-1, pt=(pc + n * RADIUS[mid] * 0.5).tolist())]
@@ -159,58 +176,62 @@ def author(L):
     elif L == "C":
         A = R_(shape("cee"), UP, LEFT_X, V(0, 0, 0)); B = None
     elif L == "D":
-        # left index up; the right hand reaches up and back from the front: its index touches the tip of the left index,
-        # its thumb the base of the left index (the two fingers and the left index close the "D")
-        B = L_(shape("point"), UP, RIGHT_X, BW)
-        A = R_(shape("point"), V(-0.1, 0.9, -0.5), LEFT_X, V(0, 0, 0))
-        A = place_contact(A, 8, B, 8, V(-0.15, 0.0, 1.0))
-        A = reach(A, 4, B[5] + V(-0.2, 0.0, 1.0) * (RADIUS[4] + RADIUS[5]))
+        # left index up (the stem of the D); the right hand is the bowl: its index curves up and over to touch the tip of the stem,
+        # its thumb touches the base of the stem, so the two fingers and the stem close the loop
+        B = L_(shape("point"), UP, NB, BW)
+        Q = hand_local(dict(index=(0, 22, 52, 38), middle=CURL, ring=CURL, pinky=CURL), thumb=THUMB_OUT)
+        A = R_(Q, UP, -NB, V(0, 0, 0))
+        A = place_contact(A, 8, B, 8, NB)
+        A = reach(A, 4, B[5] + NB * (RADIUS[4] + RADIUS[5]))
         contacts = [dict(a=8, b=8), dict(a=4, b=5)]
     elif L == "F":
-        B = L_(shape("two"), UP, RIGHT_X, BW)
-        A = R_(shape("two"), FWD, DOWN, V(0, 0, 0))
+        B = L_(shape("two"), UP, NB, BW)
+        A = R_(shape("two"), -NB, DOWN, V(0, 0, 0))
         mid = (B[6] + B[10]) / 2
-        A = A + (mid + RIGHT_X * 0.2 - (A[6] + A[10]) / 2)
+        A = A + (mid + NB * 0.2 - (A[6] + A[10]) / 2)
         contacts = []
     elif L == "G":
-        B = L_(shape("fist"), FWD, RIGHT_X, V(0.9, -1.4, -0.6))
-        A = R_(shape("fist"), FWD, RIGHT_X, V(0.9, -0.5, -0.6))
+        B = L_(shape("fist"), V(-0.5, 0.5, 0.7), V(0.7, 0.1, 0.7), V(0.3, -1.45, -0.6))
+        A = R_(shape("fist"), V(0.5, 0.5, 0.7), V(-0.7, 0.1, 0.7), V(-0.1, -0.45, -0.6))
         contacts = []
     elif L == "H":
-        # left palm up in front, fingers toward the signer's right; the flat right hand slides over it, heel to fingertips
-        B = L_(shape("flat"), LEFT_X * -1, UP, V(1.7, -1.1, 0.35))
+        # as the signer sees it: the left hand lies palm up, fingers to the right, in front (nearer the viewer);
+        # the flat right hand slides over it from the heel to the fingertips
+        B = L_(shape("flat"), FD(1, 0, 0), FD(0, 1, 0), FP(-1.4, -1.15, 0.35))
         Q = shape("flat_in")
         keys = []
         for t in np.linspace(0, 1, 9):
-            A0 = R_(Q, LEFT_X * -1, DOWN, V(1.7 - 2.9 * t, -0.90, -0.30))
+            A0 = R_(Q, FD(1, 0, 0), FD(0, -1, 0), FP(-1.4 + 2.9 * t, -0.93, -0.25))
             keys.append([A0, B])
         A = keys[0][0]
         contacts = []
     elif L == "J":
-        B = L_(shape("open"), UP, FWD, V(0.9, -0.9, 0))
+        # left hand up, palm toward the viewer and a little to the right; the right hand (palm outward) comes in from the right
+        # and its index draws the J: from the tip of the middle finger down the palm and up to the thumb tip
+        B = L_(shape("open"), FD(0.1, 1, 0), FD(0.5, 0, 0.86), FP(-1.1, -0.9, 0.0))
         Q = shape("point")
-        # the stroke: from the tip of the middle finger down the palm and up to the thumb tip
-        path = [B[12], B[11] * 0.7 + B[9] * 0.3, B[10], B[9], B[0] * 0.2 + B[9] * 0.8, B[0] * 0.5 + B[1] * 0.5 + V(-0.1, 0.0, 0),
+        nB = _unit(FD(0.5, 0, 0.86))
+        path = [B[12], B[11] * 0.7 + B[9] * 0.3, B[10], B[9], B[0] * 0.2 + B[9] * 0.8, B[0] * 0.5 + B[1] * 0.5 + FD(0.1, 0, 0),
                 B[1] * 0.6 + B[2] * 0.4, B[3], B[4]]
         keys = []
         for p in path:
-            A = R_(Q, V(-0.5, 0.4, -0.75), RIGHT_X, V(0, 0, 0))
-            A = A + (p + FWD * 0.2 - A[8])
+            A = R_(Q, FD(-0.8, 0.3, -0.3), FD(0.1, -0.2, -0.95), V(0, 0, 0))
+            A = A + (p + nB * 0.2 - A[8])
             keys.append([A, B])
         A = keys[0][0]
     elif L == "K":
-        B = L_(shape("point"), UP, RIGHT_X, BW)
-        A = R_(shape("hook"), FWD, DOWN, V(0, 0, 0))
-        A = place_contact(A, 6, B, 6, RIGHT_X)
+        B = L_(shape("point"), UP, NB, BW)
+        A = R_(shape("hook"), -NB, DOWN, V(0, 0, 0))
+        A = place_contact(A, 6, B, 6, NB)
         contacts = [dict(a=6, b=6)]
     elif L == "L":
         B = _base("flat")
-        A = R_(shape("point"), FWD, DOWN, V(0, 0, 0))
-        pc = palm_point(B, RIGHT_X)
-        A = A + (pc + RIGHT_X * 0.08 - A[7])
+        A = R_(shape("point"), _unit(np.cross(UP, NB)) * -1 + NB * -0.25, DOWN, V(0, 0, 0))
+        pc = palm_point(B, NB)
+        A = A + (pc + NB * 0.08 - A[7])
         contacts = []
     elif L in "MN":
-        A, B, contacts = _flat_press({"M": "three", "N": "two"}[L], {"M": (8, 12, 16), "N": (8, 12)}[L])
+        A, B, contacts = _flat_press({"M": "three", "N": "two"}[L], {"M": (8, 12, 16), "N": (8, 12)}[L], palm_to_viewer=True)
     elif L == "V":
         A, B, contacts = _flat_press("vee", (8, 12), palm_to_viewer=True)
     elif L == "P":
@@ -228,7 +249,7 @@ def author(L):
         A = place_contact(A, 8, B, low, V(0.0, -1.0, 0.15))
         contacts = [dict(a=8, b=low)]
     elif L == "R":
-        A, B, contacts = _flat_press("hook", (8,))
+        A, B, contacts = _flat_press("hook", (8,), palm_to_viewer=True)
     elif L == "S":
         B = L_(shape("little_hook"), UP, RIGHT_X, BW)
         A = R_(shape("little_hook"), UP, LEFT_X, V(0, 0, 0))
@@ -237,8 +258,8 @@ def author(L):
     elif L == "T":
         # left hand open, palm toward the right hand; the right index rests against the lower edge of the left palm / wrist
         B = _base("open")
-        A = R_(shape("point"), V(0.85, 0.5, 0.0), DOWN, V(0, 0, 0))
-        tgt = (B[0] * 0.6 + B[9] * 0.4) + RIGHT_X * (RADIUS[8] + 0.10)
+        A = R_(shape("point"), -NB * 0.85 + UP * 0.5, DOWN, V(0, 0, 0))
+        tgt = (B[0] * 0.6 + B[9] * 0.4) + NB * (RADIUS[8] + 0.10)
         A = A + (tgt - A[8])
         contacts = [dict(a=8, b=-1, pt=tgt.tolist())]
     elif L == "W":
@@ -251,16 +272,16 @@ def author(L):
         contacts = []
     elif L == "Y":
         # left thumb and index make a V (palm toward the viewer so the V opens in the picture plane); the right index is the stem
-        B = L_(shape("vee_thumb"), UP, FWD, V(1.1, -0.9, 0))
-        A = R_(shape("point"), V(0.30, 1.0, 0.0), FWD, V(0, 0, 0))
-        web = (B[1] + B[5]) / 2 + V(0, 0.15, 0.1)
+        B = L_(shape("vee_thumb"), UP, NB, V(1.1, -0.9, 0))
+        A = R_(shape("point"), UP + (-NB) * 0.3, -NB, V(0, 0, 0))
+        web = (B[1] + B[5]) / 2 + UP * 0.15 + NB * 0.12
         A = A + (web - A[8])
         contacts = [dict(a=8, b=-1, pt=web.tolist())]
     elif L == "Z":
         B = _base("flat")
-        pc = palm_point(B, RIGHT_X)
-        A = R_(shape("flat"), LEFT_X, DOWN, V(0, 0, 0))
-        A = A + (pc + RIGHT_X * 0.08 - A[12])
+        pc = palm_point(B, NB)
+        A = R_(shape("flat"), -NB, DOWN, V(0, 0, 0))
+        A = A + (pc + NB * 0.08 - A[12])
         contacts = []
     else:
         raise KeyError(L)
@@ -276,4 +297,10 @@ def author(L):
     for c in contacts:
         if "pt" in c:
             c["pt"] = (rotate_y(np.array([c["pt"]]), YAW)[0]).tolist()
-    return dict(hands=[A, B], chir=[1, -1] if B is not None else [1], contacts=contacts, keys=keys)
+    if B is None:
+        return dict(hands=[A], chir=[1], contacts=contacts, keys=None)
+    # seen from behind the signer the left (base) hand is on the left of the screen: slot 0 = left hand, slot 1 = right hand
+    contacts = [dict(c, a=c["b"], b=c["a"]) for c in contacts]
+    if keys is not None:
+        keys = [[b, a] for a, b in keys]
+    return dict(hands=[B, A], chir=[-1, 1], contacts=contacts, keys=keys)
